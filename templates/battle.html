@@ -66,7 +66,7 @@
                             {% for battle in active_battles %}
                                 <a href="/battle/match/{{ battle.id }}" class="feature-item battle-link-card">
                                     <strong>
-                                        {{ battle.type|upper }}
+                                        {% if battle.type == "pvp" %}{{ tr("battle.type_pvp") }}{% else %}{{ tr("battle.type_bot") }}{% endif %}
                                         {% if battle.status == "waiting" %} • {{ tr("battle.search_status") }}{% endif %}
                                         {% if battle.status == "ready_check" %} • {{ tr("battle.ready_status") }}{% endif %}
                                     </strong>
@@ -92,7 +92,7 @@
                         <div class="feature-list">
                             {% for battle in recent_battles %}
                                 <div class="feature-item">
-                                    <strong>{{ battle.type|upper }}</strong>
+                                    <strong>{% if battle.type == "pvp" %}{{ tr("battle.type_pvp") }}{% else %}{{ tr("battle.type_bot") }}{% endif %}</strong>
                                     <span>{{ tr("battle.winner", name=battle.winner_name) }}</span>
                                     <span>{{ battle.score_line }}</span>
                                 </div>
@@ -120,7 +120,7 @@
                     <strong>{{ tr("battle.you") }}</strong>
                     <span id="modal-your-ready" class="ready-badge pending">{{ tr("battle.pending") }}</span>
                 </div>
-                <div class="ready-check-vs">VS</div>
+                <div class="ready-check-vs">{{ tr("common.vs")|upper }}</div>
                 <div class="ready-check-player">
                     <strong id="modal-opponent-name">{{ tr("common.unknown") }}</strong>
                     <span id="modal-opponent-ready" class="ready-badge pending">{{ tr("battle.pending") }}</span>

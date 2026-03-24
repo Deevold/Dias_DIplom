@@ -49,6 +49,19 @@
             <div class="battle-live-strip">
                 <span id="battle-opponent-indicator" class="battle-opponent-indicator hidden"></span>
             </div>
+
+            {% if battle.battle_type == "bot" %}
+                <div class="battle-ai-status" id="battle-ai-status">
+                    <span class="battle-ai-status-badge" id="battle-ai-status-badge">{{ tr("battle.ai_thinking") }}</span>
+                    <span class="battle-ai-status-text" id="battle-ai-status-text">
+                        {% if ai_state and ai_state.remaining_seconds is not none %}
+                            {{ tr("battle.ai_ready_in", seconds=ai_state.remaining_seconds) }}
+                        {% else %}
+                            {{ tr("battle.ai_thinking") }}
+                        {% endif %}
+                    </span>
+                </div>
+            {% endif %}
         </section>
 
         <section class="landing-panel battle-panel battle-question-panel">
@@ -119,6 +132,9 @@
         const transitionNextQuestion = {{ tr("battle.next_question")|tojson }};
         const transitionCorrectText = {{ tr("battle.transition_correct")|tojson }};
         const transitionWrongText = {{ tr("battle.transition_wrong")|tojson }};
+        const aiThinkingText = {{ tr("battle.ai_thinking")|tojson }};
+        const aiAnsweredText = {{ tr("battle.ai_answered")|tojson }};
+        const aiReadyPattern = {{ tr("battle.ai_ready_in", seconds="__SECONDS__")|tojson }};
 
         const timerElement = document.getElementById("battle-timer");
         const responseSecondsInput = document.getElementById("response_seconds");
@@ -138,6 +154,9 @@
         const roundLabelElement = document.getElementById("battle-round-label");
         const battleLivePill = document.getElementById("battle-live-pill");
         const opponentIndicatorElement = document.getElementById("battle-opponent-indicator");
+        const aiStatusElement = document.getElementById("battle-ai-status");
+        const aiStatusBadgeElement = document.getElementById("battle-ai-status-badge");
+        const aiStatusTextElement = document.getElementById("battle-ai-status-text");
         const roundTransitionElement = document.getElementById("battle-round-transition");
         const roundTransitionTitleElement = document.getElementById("battle-round-transition-title");
         const roundTransitionSubtitleElement = document.getElementById("battle-round-transition-subtitle");
@@ -153,6 +172,7 @@
         let currentRoundIndex = {{ current_index }};
         let currentYourAnswerCount = {{ your_answer_count }};
         let currentOpponentAnswerCount = {{ opponent_answer_count }};
+        let currentAiThinking = {{ "true" if ai_state and ai_state.thinking else "false" }};
         let transitionLocked = false;
         let opponentIndicatorTimeoutId = null;
         let pollTimerId = null;
@@ -348,6 +368,24 @@
             }, 1400);
         }
 
+        function updateAiStatus(thinking, nextActionSeconds) {
+            if (!aiStatusElement || BATTLE_TYPE !== "bot") {
+                return;
+            }
+            currentAiThinking = Boolean(thinking);
+            aiStatusElement.classList.toggle("answered", !currentAiThinking);
+            if (aiStatusBadgeElement) {
+                aiStatusBadgeElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
+            }
+            if (aiStatusTextElement) {
+                if (currentAiThinking && nextActionSeconds !== null && nextActionSeconds !== undefined) {
+                    aiStatusTextElement.textContent = aiReadyPattern.replace("__SECONDS__", nextActionSeconds);
+                } else {
+                    aiStatusTextElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
+                }
+            }
+        }
+
         function showRoundTransition(title, subtitle, autoHide = true) {
             if (!roundTransitionElement) {
                 return;
@@ -400,6 +438,9 @@
             }
             if (typeof data.opponent_answer_count === "number" && data.opponent_answer_count > currentOpponentAnswerCount) {
                 showOpponentAnswered(data.opponent_name);
+            }
+            if (BATTLE_TYPE === "bot" && typeof data.ai_thinking === "boolean") {
+                updateAiStatus(data.ai_thinking, data.ai_next_action_seconds);
             }
             if (typeof data.your_answer_count === "number") {
                 currentYourAnswerCount = data.your_answer_count;
@@ -580,6 +621,10 @@
                 lastAnswerCorrect ? transitionCorrectText : transitionWrongText,
                 lastAnswerCorrect && lastAnswerScore > 0 ? ("+" + lastAnswerScore) : transitionNextQuestion
             );
+        }
+
+        if (BATTLE_TYPE === "bot") {
+            updateAiStatus(currentAiThinking, {{ ai_state.remaining_seconds if ai_state and ai_state.remaining_seconds is not none else 'null' }});
         }
     </script>
 </body>

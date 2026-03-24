@@ -21,7 +21,7 @@
                             {% if ready_state.your_ready %}{{ tr("battle.accepted") }}{% else %}{{ tr("battle.pending") }}{% endif %}
                         </span>
                     </div>
-                    <div class="ready-check-vs">VS</div>
+                    <div class="ready-check-vs">{{ tr("common.vs")|upper }}</div>
                     <div class="ready-check-player">
                         <strong id="ready-opponent-name">{{ ready_state.opponent.name if ready_state.opponent else tr("common.unknown") }}</strong>
                         <span id="ready-opponent-badge" class="ready-badge {% if ready_state.opponent_ready %}accepted{% else %}pending{% endif %}">

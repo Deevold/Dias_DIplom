@@ -6,6 +6,55 @@ from urllib import error, request
 from app.services.battle_service import calculate_answer_score, get_bot_answer_data
 
 
+def _task_category(task):
+    question = str(task.get("q", "")).lower()
+    if "лишнее" in question or "артық" in question or "odd" in question:
+        return "odd_one_out"
+    if any(token in question for token in ["последователь", "прогресс", "sequence", "тізбек"]):
+        return "sequence"
+    if "*" in question or "/" in question or "×" in question or "÷" in question:
+        return "math_muldiv"
+    if "+" in question or "-" in question:
+        return "math_addsub"
+    return "logic"
+
+
+def _clamp(value, min_value, max_value):
+    return max(min_value, min(max_value, value))
+
+
+def _level_accuracy_for_task(level_code, level_config, task):
+    base = float(level_config["accuracy"])
+    category = _task_category(task)
+
+    adjustments = {
+        "easy": {
+            "math_addsub": 0.08,
+            "math_muldiv": -0.04,
+            "sequence": -0.10,
+            "odd_one_out": -0.14,
+            "logic": -0.08,
+        },
+        "medium": {
+            "math_addsub": 0.05,
+            "math_muldiv": 0.0,
+            "sequence": -0.04,
+            "odd_one_out": -0.08,
+            "logic": -0.03,
+        },
+        "hard": {
+            "math_addsub": 0.04,
+            "math_muldiv": 0.03,
+            "sequence": 0.0,
+            "odd_one_out": -0.03,
+            "logic": -0.01,
+        },
+    }
+
+    adjusted = base + adjustments.get(level_code, {}).get(category, 0.0)
+    return _clamp(adjusted, 0.2, 0.98)
+
+
 def _build_prompt(task, level_code, language="ru"):
     options = task.get("options", [])
     options_text = ", ".join(str(option) for option in options)
@@ -77,8 +126,31 @@ def _pick_wrong_answer(task):
     return random.choice(filtered) if filtered else correct + 1
 
 
-def pick_ai_delay(level_config):
-    return random.randint(level_config["min_time"], level_config["max_time"])
+def pick_ai_delay(level_config, task=None, level_code=None):
+    min_time = float(level_config["min_time"])
+    max_time = float(level_config["max_time"])
+
+    if task and level_code:
+        category = _task_category(task)
+        if level_code == "easy":
+            if category in ("sequence", "odd_one_out", "logic"):
+                min_time += 1.5
+                max_time += 3.0
+            elif category == "math_muldiv":
+                min_time += 0.8
+                max_time += 1.8
+        elif level_code == "medium":
+            if category in ("sequence", "odd_one_out", "logic"):
+                min_time += 0.6
+                max_time += 1.4
+        elif level_code == "hard":
+            if category == "math_addsub":
+                min_time = max(1.2, min_time - 0.4)
+                max_time = max(min_time + 0.5, max_time - 0.5)
+            elif category == "math_muldiv":
+                min_time = max(1.4, min_time - 0.2)
+
+    return round(random.uniform(min_time, max_time), 2)
 
 
 def request_gemini_answer(task, api_key, model_name, language="ru", timeout=8):
@@ -139,8 +211,8 @@ def get_gemini_answer_data(task, level_code, level_config, api_key, model_name, 
         return get_bot_answer_data(level_config, task["a"])
 
     if response_seconds is None:
-        response_seconds = pick_ai_delay(level_config)
-    should_be_correct = random.random() <= level_config["accuracy"]
+        response_seconds = pick_ai_delay(level_config, task, level_code)
+    should_be_correct = random.random() <= _level_accuracy_for_task(level_code, level_config, task)
     correct_answer = int(task["a"])
 
     if should_be_correct:

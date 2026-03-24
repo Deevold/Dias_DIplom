@@ -32,7 +32,7 @@
             <button type="button" class="profile-edit-button" id="open-profile-modal">{{ tr("profile.edit") }}</button>
             <p class="player-card-label">{{ tr("profile.card") }}</p>
             <h1>{{ player.name }}</h1>
-            <p class="profile-elo-line">Elo: <b>{{ player.elo }}</b></p>
+            <p class="profile-elo-line">{{ tr("profile.elo_short") }}: <b>{{ player.elo }}</b></p>
 
             <div class="player-stats-grid">
                 <div>
@@ -62,7 +62,7 @@
             </div>
 
             <div class="profile-card-footer">
-                <span>Email: {{ player.email }}</span>
+                <span>{{ tr("profile.email") }}: {{ player.email }}</span>
                 <span>{{ tr("profile.created_at") }}: {{ player.created_at }}</span>
             </div>
 
@@ -92,7 +92,7 @@
                                 <span class="leaderboard-rank">#{{ loop.index }}</span>
                                 <div class="leaderboard-player">
                                     <strong>{{ entry.user.name }}</strong>
-                                    <span>Elo</span>
+                                    <span>{{ tr("profile.elo_short") }}</span>
                                 </div>
                                 <b>{{ entry.user.elo }}</b>
                             </div>
@@ -208,7 +208,7 @@
                                 <div class="profile-history-meta">
                                     <span>{{ tr("history.score", your=battle.your_score, opponent=battle.opponent_score) }}</span>
                                     <span class="history-elo-delta {% if battle.elo_delta > 0 %}positive{% elif battle.elo_delta < 0 %}negative{% else %}neutral{% endif %}">
-                                        Elo {{ battle.elo_delta_label }}
+                                        {{ tr("profile.elo_delta") }} {{ battle.elo_delta_label }}
                                     </span>
                                     <span>{{ tr("profile.match_duration") }}: {{ battle.duration }}</span>
                                 </div>

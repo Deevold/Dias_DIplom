@@ -55,12 +55,12 @@
                 <div class="feature-list">
                     <div class="feature-item">
                         <strong>{{ current_user.name }}</strong>
-                        <span>Elo: {{ current_user.elo }}</span>
+                        <span>{{ tr("profile.elo_short") }}: {{ current_user.elo }}</span>
                     </div>
                     {% if opponent %}
                         <div class="feature-item">
                             <strong>{{ opponent.name }}</strong>
-                            <span>Elo: {{ opponent.elo }}</span>
+                            <span>{{ tr("profile.elo_short") }}: {{ opponent.elo }}</span>
                         </div>
                     {% endif %}
                 </div>

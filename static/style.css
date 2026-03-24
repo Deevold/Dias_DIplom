@@ -901,6 +901,50 @@ select {
     visibility: visible;
 }
 
+.battle-ai-status {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: center;
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-ai-status.answered {
+    border-color: rgba(41, 214, 134, 0.24);
+    box-shadow: 0 0 18px rgba(41, 214, 134, 0.12);
+}
+
+.battle-ai-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(79, 124, 255, 0.18);
+    color: #dce9ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.battle-ai-status.answered .battle-ai-status-badge {
+    background: rgba(41, 214, 134, 0.18);
+    color: #8ff0c3;
+}
+
+.battle-ai-status-text {
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 13px;
+    font-weight: 600;
+}
+
 .tug-player {
     display: flex;
     flex-direction: column;
