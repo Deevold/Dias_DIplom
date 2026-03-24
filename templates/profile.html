@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("profile.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <div class="page-topbar">
+            <div class="language-switcher" aria-label="{{ tr('lang.switch') }}">
+                <span class="language-label">{{ tr("lang.switch") }}</span>
+                {% for code, language in language_options.items() %}
+                    <form method="POST" action="/set_language">
+                        <input type="hidden" name="language" value="{{ code }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button
+                            type="submit"
+                            class="language-flag-button {% if code == current_lang %}active{% endif %}"
+                            title="{{ language.label }}"
+                            aria-label="{{ language.label }}"
+                        >
+                            {{ language.flag }}
+                        </button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+
+        <section class="player-card theme-{{ player.card_theme }} profile-card-shell">
+            <button type="button" class="profile-edit-button" id="open-profile-modal">{{ tr("profile.edit") }}</button>
+            <p class="player-card-label">{{ tr("profile.card") }}</p>
+            <h1>{{ player.name }}</h1>
+            <p class="profile-elo-line">Elo: <b>{{ player.elo }}</b></p>
+
+            <div class="player-stats-grid">
+                <div>
+                    <span class="stat-label">{{ tr("profile.matches") }}</span>
+                    <strong>{{ battle_stats.total_matches }}</strong>
+                </div>
+                <div>
+                    <span class="stat-label">{{ tr("profile.wins") }}</span>
+                    <strong>{{ battle_stats.wins }}</strong>
+                </div>
+                <div>
+                    <span class="stat-label">{{ tr("profile.win_percent") }}</span>
+                    <strong>{{ battle_stats.win_percent }}%</strong>
+                </div>
+                <div>
+                    <span class="stat-label">{{ tr("profile.losses") }}</span>
+                    <strong>{{ battle_stats.losses }}</strong>
+                </div>
+                <div>
+                    <span class="stat-label">{{ tr("profile.accuracy") }}</span>
+                    <strong>{{ battle_stats.accuracy_percent }}%</strong>
+                </div>
+                <div>
+                    <span class="stat-label">{{ tr("profile.draws") }}</span>
+                    <strong>{{ battle_stats.draws }}</strong>
+                </div>
+            </div>
+
+            <div class="profile-card-footer">
+                <span>Email: {{ player.email }}</span>
+                <span>{{ tr("profile.created_at") }}: {{ player.created_at }}</span>
+            </div>
+
+            {% if profile_error %}
+                <p class="warning-text profile-warning">{{ profile_error }}</p>
+            {% endif %}
+        </section>
+
+        <section class="landing-grid single-column">
+            <article class="landing-panel profile-actions-panel">
+                <h2>{{ tr("profile.quick_actions") }}</h2>
+                <div class="feature-list">
+                    <a href="/battle" class="action-link">{{ tr("nav.battle") }}</a>
+                    <a href="/stats" class="action-link action-link-muted">{{ tr("profile.overall_stats") }}</a>
+                    <a href="/history" class="action-link action-link-muted">{{ tr("profile.history") }}</a>
+                </div>
+            </article>
+        </section>
+
+        <section class="landing-panel profile-logout-panel">
+            <a href="/logout" class="action-link action-link-muted logout-link">{{ tr("profile.logout") }}</a>
+        </section>
+    </main>
+
+    <div class="profile-modal-backdrop hidden" id="profile-modal-backdrop">
+        <div class="profile-modal">
+            <div class="profile-modal-header">
+                <h2>{{ tr("profile.edit_title") }}</h2>
+                <button type="button" class="profile-modal-close" id="close-profile-modal">x</button>
+            </div>
+            <form method="POST" action="/set_profile" class="profile-form profile-modal-form">
+                <input type="text" name="player_name" value="{{ player.name }}" maxlength="30" required>
+                <select name="card_theme">
+                    {% for theme_code, theme_name in player_themes.items() %}
+                        <option value="{{ theme_code }}" {% if theme_code == player.card_theme %}selected{% endif %}>
+                            {{ theme_label(theme_code) }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit">{{ tr("profile.save") }}</button>
+            </form>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link active" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+
+    <script>
+        const openProfileModalButton = document.getElementById("open-profile-modal");
+        const closeProfileModalButton = document.getElementById("close-profile-modal");
+        const profileModalBackdrop = document.getElementById("profile-modal-backdrop");
+
+        function openProfileModal() {
+            profileModalBackdrop.classList.remove("hidden");
+        }
+
+        function closeProfileModal() {
+            profileModalBackdrop.classList.add("hidden");
+        }
+
+        if (openProfileModalButton) {
+            openProfileModalButton.addEventListener("click", openProfileModal);
+        }
+
+        if (closeProfileModalButton) {
+            closeProfileModalButton.addEventListener("click", closeProfileModal);
+        }
+
+        if (profileModalBackdrop) {
+            profileModalBackdrop.addEventListener("click", function (event) {
+                if (event.target === profileModalBackdrop) {
+                    closeProfileModal();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

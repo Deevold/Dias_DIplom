@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("site_name") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page page-landing">
+        <div class="page-topbar">
+            <div class="language-switcher" aria-label="{{ tr('lang.switch') }}">
+                <span class="language-label">{{ tr("lang.switch") }}</span>
+                {% for code, language in language_options.items() %}
+                    <form method="POST" action="/set_language">
+                        <input type="hidden" name="language" value="{{ code }}">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button
+                            type="submit"
+                            class="language-flag-button {% if code == current_lang %}active{% endif %}"
+                            title="{{ language.label }}"
+                            aria-label="{{ language.label }}"
+                        >
+                            {{ language.flag }}
+                        </button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+
+        <section class="hero-card">
+            <span class="eyebrow">{{ tr("site_name") }}</span>
+            <h1>{{ tr("hero.home_title") }}</h1>
+            <p class="hero-text">{{ tr("hero.home_text") }}</p>
+
+            <div class="hero-actions">
+                <a href="/learning" class="action-link">{{ tr("nav.learning") }}</a>
+                <a href="/battle" class="action-link action-link-muted">{{ tr("nav.battle") }}</a>
+            </div>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("auth.register") }}</h2>
+                <form method="POST" action="/register" class="profile-form">
+                    <input type="text" name="name" placeholder="{{ tr('auth.name') }}" maxlength="30" required>
+                    <input type="email" name="email" placeholder="{{ tr('auth.email') }}" required>
+                    <input type="password" name="password" placeholder="{{ tr('auth.password') }}" required>
+                    <select name="card_theme">
+                        {% for theme_code, theme_name in player_themes.items() %}
+                            <option value="{{ theme_code }}">{{ theme_label(theme_code) }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">{{ tr("auth.create_account") }}</button>
+                </form>
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("auth.login") }}</h2>
+                <form method="POST" action="/login" class="profile-form">
+                    <input type="email" name="email" placeholder="{{ tr('auth.email') }}" required>
+                    <input type="password" name="password" placeholder="{{ tr('auth.password') }}" required>
+                    <button type="submit">{{ tr("auth.login_button") }}</button>
+                </form>
+
+                {% if auth_error %}
+                    <p class="warning-text">{{ auth_error }}</p>
+                {% endif %}
+
+                {% if auth_success %}
+                    <p class="correct">{{ auth_success }}</p>
+                {% endif %}
+
+                {% if current_user %}
+                    <div class="mini-user-card theme-{{ current_user.card_theme }}">
+                        <p class="player-card-label">{{ tr("auth.current_account") }}</p>
+                        <h3>{{ current_user.name }}</h3>
+                        <p>{{ current_user.email }}</p>
+                        <a href="/profile" class="text-link">{{ tr("auth.open_profile") }}</a>
+                    </div>
+                {% endif %}
+            </article>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

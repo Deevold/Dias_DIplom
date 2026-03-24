@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("logic.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="section-hero">
+            <span class="eyebrow">{{ tr("nav.learning") }} / {{ tr("learning.logic") }}</span>
+            <h1>{{ tr("logic.hero") }}</h1>
+        </section>
+
+        <section class="landing-grid single-column">
+            <article class="landing-panel">
+                <h2>{{ tr("logic.choose_level") }}</h2>
+                <a href="/start/logic/easy"><button>{{ level_label("easy") }}</button></a>
+                <br><br>
+                <a href="/start/logic/medium"><button>{{ level_label("medium") }}</button></a>
+                <br><br>
+                <a href="/start/logic/hard"><button>{{ level_label("hard") }}</button></a>
+            </article>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link active" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

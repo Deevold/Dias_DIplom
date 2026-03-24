@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("history.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="section-hero">
+            <span class="eyebrow">{{ tr("nav.profile") }} / {{ tr("history.title") }}</span>
+            <h1>{{ tr("history.hero") }}</h1>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("history.real_battles") }}</h2>
+                {% if battle_results %}
+                    <div class="feature-list">
+                        {% for battle in battle_results %}
+                            <div class="feature-item">
+                                <strong>{{ tr("history.against", result=battle.result_label, opponent=battle.opponent_name) }}</strong>
+                                <span>{{ tr("history.score", your=battle.your_score, opponent=battle.opponent_score) }}</span>
+                                <span>{{ battle.created_at }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>{{ tr("history.no_battles") }}</p>
+                {% endif %}
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("history.training") }}</h2>
+                {% if training_results %}
+                    <div class="feature-list">
+                        {% for r in training_results %}
+                            <div class="feature-item">
+                                <strong>{{ section_label(r.section) }} • {{ level_label(r.level) }}</strong>
+                                <span>{{ r.score }} / {{ r.total }} • {{ r.percent }}%</span>
+                                <span>{{ r.created_at }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>{{ tr("history.no_training") }}</p>
+                {% endif %}
+            </article>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link active" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

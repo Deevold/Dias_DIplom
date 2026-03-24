@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("battle.ready_check") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="hero-card battle-card">
+            {% if ready_state %}
+                <span class="eyebrow">{{ tr("battle.ready_check") }}</span>
+                <h1>{{ tr("battle.match_found") }}</h1>
+                <p class="hero-text">{{ tr("battle.ready_text") }}</p>
+
+                <div class="ready-check-card">
+                    <div class="ready-check-player">
+                        <strong>{{ tr("battle.you") }}</strong>
+                        <span class="ready-badge {% if ready_state.your_ready %}accepted{% else %}pending{% endif %}">
+                            {% if ready_state.your_ready %}{{ tr("battle.accepted") }}{% else %}{{ tr("battle.pending") }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="ready-check-vs">VS</div>
+                    <div class="ready-check-player">
+                        <strong id="ready-opponent-name">{{ ready_state.opponent.name if ready_state.opponent else tr("common.unknown") }}</strong>
+                        <span id="ready-opponent-badge" class="ready-badge {% if ready_state.opponent_ready %}accepted{% else %}pending{% endif %}">
+                            {% if ready_state.opponent_ready %}{{ tr("battle.accepted") }}{% else %}{{ tr("battle.pending") }}{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="matchmaking-placeholder ready-placeholder">
+                    <div class="matchmaking-placeholder-orb"></div>
+                    <div class="matchmaking-placeholder-wave"></div>
+                    <p>{{ tr("battle.ready_placeholder") }}</p>
+                </div>
+
+                <div class="hero-actions ready-check-actions">
+                    {% if not ready_state.your_ready %}
+                        <form method="POST" action="/battle/match/{{ battle.id }}/accept" id="accept-ready-form">
+                            <button type="submit" class="ready-play-button">{{ tr("battle.accept_match") }}</button>
+                        </form>
+                    {% else %}
+                        <button type="button" class="ready-play-button accepted" disabled>{{ tr("battle.already_accepted") }}</button>
+                    {% endif %}
+
+                    <form method="POST" action="/battle/cancel-search/{{ battle.id }}">
+                        <button type="submit" class="action-link action-link-muted cancel-search-button">{{ tr("battle.cancel_search") }}</button>
+                    </form>
+                </div>
+            {% else %}
+                <span class="eyebrow">{{ tr("battle.title") }}</span>
+                <h1>{{ tr("battle.searching_title") }}</h1>
+                <p class="hero-text">{{ tr("battle.searching_text") }}</p>
+
+                <div class="matchmaking-placeholder">
+                    <div class="matchmaking-placeholder-orb"></div>
+                    <div class="matchmaking-placeholder-wave"></div>
+                    <p>{{ tr("battle.search_placeholder") }}</p>
+                </div>
+
+                <div class="hero-actions">
+                    <form method="POST" action="/battle/cancel-search/{{ battle.id }}">
+                        <button type="submit" class="action-link action-link-muted cancel-search-button">{{ tr("battle.cancel_search") }}</button>
+                    </form>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link active" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+
+    <script>
+        const STATUS_URL = "/battle/match/{{ battle.id }}/status";
+        const acceptedText = {{ tr("battle.accepted")|tojson }};
+        const pendingText = {{ tr("battle.pending")|tojson }};
+        let pollingLocked = false;
+
+        function updateReadyState(data) {
+            const opponentBadge = document.getElementById("ready-opponent-badge");
+            const opponentName = document.getElementById("ready-opponent-name");
+
+            if (opponentBadge && typeof data.opponent_ready === "boolean") {
+                opponentBadge.textContent = data.opponent_ready ? acceptedText : pendingText;
+                opponentBadge.classList.toggle("accepted", data.opponent_ready);
+                opponentBadge.classList.toggle("pending", !data.opponent_ready);
+            }
+
+            if (opponentName && data.opponent_name) {
+                opponentName.textContent = data.opponent_name;
+            }
+        }
+
+        async function pollBattleStatus() {
+            if (pollingLocked) {
+                return;
+            }
+
+            pollingLocked = true;
+            try {
+                const response = await fetch(STATUS_URL, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await response.json();
+
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                    return;
+                }
+
+                if (data.status === "ready_check") {
+                    updateReadyState(data);
+                    return;
+                }
+
+                if (data.status === "active") {
+                    window.location.href = "/battle/match/{{ battle.id }}";
+                }
+            } catch (error) {
+                console.debug(error);
+            } finally {
+                pollingLocked = false;
+            }
+        }
+
+        setInterval(pollBattleStatus, 1200);
+        pollBattleStatus();
+    </script>
+</body>
+</html>

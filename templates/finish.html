@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("finish.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="landing-panel">
+            <h1>{{ tr("finish.heading") }}</h1>
+
+            <p>{{ tr("finish.level") }}: <b>{{ level_label(level) }}</b></p>
+            <p>{{ tr("finish.mode") }}: <b>{{ mode_label(mode) if mode in ["addsub", "mix", "logic"] else tr("common.unknown") }}</b></p>
+            <h2>{{ score }} / {{ total }}</h2>
+            <p>{{ tr("finish.accuracy") }}: {{ percent }}%</p>
+            {% if not training_mode %}
+                <p>{{ tr("finish.time") }}: {{ time_spent }} / {{ time_limit }}</p>
+            {% endif %}
+
+            {% if time_expired %}
+                <p class="warning-text">{{ tr("finish.expired") }}</p>
+            {% endif %}
+        </section>
+
+        <section class="landing-panel">
+            {% for r in rows %}
+                <div class="result-item">
+                    <p><b>{{ tr("finish.task", number=r.num) }}</b></p>
+                    <p>{{ r.question }}</p>
+                    <p>{{ tr("finish.your_answer") }}: <b>{{ r.user_answer if r.user_answer is not none else tr("common.none") }}</b></p>
+                    <p>{{ tr("finish.correct_answer") }}: <b>{{ r.correct_answer }}</b></p>
+
+                    {% if r.is_correct %}
+                        <p class="correct">{{ tr("finish.correct") }}</p>
+                    {% else %}
+                        <p class="wrong">{{ tr("finish.wrong") }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link active" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

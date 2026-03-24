@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("task.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <div class="container">
+            <h2>{{ tr("finish.task", number=number) }} / {{ total }}</h2>
+            {% if training_mode %}
+                <p class="hero-text">{{ tr("task.mode_training") }}</p>
+            {% endif %}
+
+            <div class="task-top-panel">
+                <div class="progress-info">
+                    <span>{{ tr("task.progress") }}: {{ progress_percent }}%</span>
+                    {% if not training_mode %}
+                        <span>{{ tr("task.limit") }}: {{ (time_limit // 60) if time_limit else 0 }} {{ tr("common.minutes_short") }}</span>
+                    {% else %}
+                        <span>{{ tr("task.no_limit") }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress_percent }}%;"></div>
+                </div>
+
+                {% if not training_mode %}
+                    <div class="timer-box">
+                        {{ tr("task.time_left") }}:
+                        <span id="timer">{{ "%02d:%02d"|format(remaining_seconds // 60, remaining_seconds % 60) }}</span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <h1 class="{% if is_logic_task %}task-question task-question-logic{% else %}task-question{% endif %}">{{ question }}</h1>
+
+            <form method="POST" action="/answer" id="answer-form">
+                <input type="number" name="user_answer" required autofocus>
+                <br>
+                <button type="submit">{{ tr("task.next") }}</button>
+            </form>
+        </div>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link active" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+
+    <script>
+        const answerForm = document.getElementById("answer-form");
+        answerForm.addEventListener("submit", function () {
+            const submitButton = answerForm.querySelector("button[type='submit']");
+            submitButton.disabled = true;
+        });
+
+        {% if not training_mode %}
+            let remainingSeconds = {{ remaining_seconds }};
+            const timerElement = document.getElementById("timer");
+
+            function updateTimer() {
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+
+                timerElement.textContent =
+                    String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+
+                if (remainingSeconds <= 10) {
+                    timerElement.classList.add("timer-warning");
+                }
+
+                if (remainingSeconds <= 0) {
+                    window.location.href = "/finish";
+                    return;
+                }
+
+                remainingSeconds--;
+            }
+
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("battle.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main
+        class="page"
+        id="battle-page-root"
+        data-open-battle-id="{{ open_pvp_battle.id if open_pvp_battle else '' }}"
+        data-open-battle-status="{{ open_pvp_battle.status if open_pvp_battle else 'idle' }}"
+    >
+        <section class="section-hero battle-hero-centered">
+            <span class="eyebrow">{{ tr("nav.battle") }}</span>
+            <h1>{{ tr("battle.hero") }}</h1>
+            {% if not current_user %}
+                <p class="hero-text">{{ tr("battle.need_profile") }}</p>
+            {% endif %}
+        </section>
+
+        {% if current_user %}
+            <section class="battle-entry-layout">
+                <article class="landing-panel battle-primary-panel">
+                    <h2>{{ tr("battle.real") }}</h2>
+
+                    <form method="POST" action="/battle/search-pvp" class="battle-main-cta-form" id="battle-search-form">
+                        <button type="button" class="battle-main-cta {% if open_pvp_battle and open_pvp_battle.status in ['waiting', 'ready_check'] %}searching{% endif %}" id="battle-search-button">
+                            {% if open_pvp_battle and open_pvp_battle.status in ['waiting', 'ready_check'] %}
+                                {{ tr("battle.cancel_search") }}
+                            {% else %}
+                                {{ tr("battle.find_opponent") }}
+                            {% endif %}
+                        </button>
+                    </form>
+                </article>
+
+                <article class="landing-panel battle-bot-panel">
+                    <h2>{{ tr("battle.bot") }}</h2>
+                    <p>{{ tr("battle.bot_desc") }}</p>
+
+                    <div class="feature-list battle-bot-list">
+                        {% for bot_code, bot_data in bot_levels.items() %}
+                            <form method="POST" action="/battle/create-bot" class="battle-form-inline">
+                                <input type="hidden" name="bot_level" value="{{ bot_code }}">
+                                <div class="feature-item battle-bot-item">
+                                    <div>
+                                        <strong>{{ tr("bot." ~ bot_code) }}</strong>
+                                        <span>{{ tr("battle.difficulty") }}: {{ level_label(bot_code) }}</span>
+                                    </div>
+                                    <button type="submit" class="battle-bot-button">{{ tr("battle.play") }}</button>
+                                </div>
+                            </form>
+                        {% endfor %}
+                    </div>
+                </article>
+            </section>
+
+            <section class="landing-grid">
+                <article class="landing-panel">
+                    <h2>{{ tr("battle.active_matches") }}</h2>
+                    {% if active_battles %}
+                        <div class="feature-list">
+                            {% for battle in active_battles %}
+                                <a href="/battle/match/{{ battle.id }}" class="feature-item battle-link-card">
+                                    <strong>
+                                        {{ battle.type|upper }}
+                                        {% if battle.status == "waiting" %} • {{ tr("battle.search_status") }}{% endif %}
+                                        {% if battle.status == "ready_check" %} • {{ tr("battle.ready_status") }}{% endif %}
+                                    </strong>
+                                    <span>
+                                        {% if battle.opponent %}
+                                            {{ battle.opponent.name }}
+                                        {% else %}
+                                            {{ tr("battle.waiting_opponent") }}
+                                        {% endif %}
+                                    </span>
+                                    <span>{{ battle.score_line }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>{{ tr("battle.no_active") }}</p>
+                    {% endif %}
+                </article>
+
+                <article class="landing-panel">
+                    <h2>{{ tr("battle.recent") }}</h2>
+                    {% if recent_battles %}
+                        <div class="feature-list">
+                            {% for battle in recent_battles %}
+                                <div class="feature-item">
+                                    <strong>{{ battle.type|upper }}</strong>
+                                    <span>{{ tr("battle.winner", name=battle.winner_name) }}</span>
+                                    <span>{{ battle.score_line }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p>{{ tr("battle.no_recent") }}</p>
+                    {% endif %}
+                </article>
+            </section>
+        {% else %}
+            <section class="landing-panel">
+                <a href="/" class="action-link">{{ tr("battle.create_profile") }}</a>
+            </section>
+        {% endif %}
+    </main>
+
+    <div class="match-found-modal-backdrop hidden" id="match-found-modal">
+        <div class="match-found-modal">
+            <span class="eyebrow">{{ tr("battle.match_found") }}</span>
+            <h2>{{ tr("battle.match_found") }}</h2>
+            <p class="hero-text">{{ tr("battle.opponent") }}: <b id="match-found-opponent">{{ tr("common.unknown") }}</b></p>
+            <div class="ready-check-card modal-ready-card">
+                <div class="ready-check-player">
+                    <strong>{{ tr("battle.you") }}</strong>
+                    <span id="modal-your-ready" class="ready-badge pending">{{ tr("battle.pending") }}</span>
+                </div>
+                <div class="ready-check-vs">VS</div>
+                <div class="ready-check-player">
+                    <strong id="modal-opponent-name">{{ tr("common.unknown") }}</strong>
+                    <span id="modal-opponent-ready" class="ready-badge pending">{{ tr("battle.pending") }}</span>
+                </div>
+            </div>
+            <div class="match-found-timer" id="match-found-timer">15</div>
+            <div class="hero-actions ready-check-actions">
+                <button type="button" class="ready-play-button" id="modal-accept-button">{{ tr("battle.accept_match") }}</button>
+                <button type="button" class="action-link action-link-muted cancel-search-button" id="modal-cancel-button">{{ tr("battle.cancel_search") }}</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link active" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+
+    {% if current_user %}
+        <script>
+            const battlePageRoot = document.getElementById("battle-page-root");
+            const searchForm = document.getElementById("battle-search-form");
+            const searchButton = document.getElementById("battle-search-button");
+            const modal = document.getElementById("match-found-modal");
+            const modalAcceptButton = document.getElementById("modal-accept-button");
+            const modalCancelButton = document.getElementById("modal-cancel-button");
+            const modalTimer = document.getElementById("match-found-timer");
+            const modalOpponentName = document.getElementById("modal-opponent-name");
+            const modalOpponentReady = document.getElementById("modal-opponent-ready");
+            const modalYourReady = document.getElementById("modal-your-ready");
+            const searchStateUrl = "/battle/pvp-state";
+            const uiText = {
+                cancelSearch: {{ tr("battle.cancel_search")|tojson }},
+                findOpponent: {{ tr("battle.find_opponent")|tojson }},
+                accepted: {{ tr("battle.accepted")|tojson }},
+                pending: {{ tr("battle.pending")|tojson }},
+                play: {{ tr("battle.accept_match")|tojson }},
+                alreadyAccepted: {{ tr("battle.already_accepted")|tojson }},
+                unknown: {{ tr("common.unknown")|tojson }},
+            };
+            let currentBattleId = battlePageRoot.dataset.openBattleId ? Number(battlePageRoot.dataset.openBattleId) : null;
+            let currentStatus = battlePageRoot.dataset.openBattleStatus || "idle";
+            let pollingLocked = false;
+            let readySoundInterval = null;
+            let audioContext = null;
+
+            function ensureAudioContext() {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                return audioContext;
+            }
+
+            function playReadyPulse() {
+                const context = ensureAudioContext();
+                const now = context.currentTime;
+                const oscillator = context.createOscillator();
+                const gain = context.createGain();
+                oscillator.type = "triangle";
+                oscillator.frequency.setValueAtTime(740, now);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.04, now + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+                oscillator.connect(gain);
+                gain.connect(context.destination);
+                oscillator.start(now);
+                oscillator.stop(now + 0.35);
+            }
+
+            function startReadySound() {
+                stopReadySound();
+                playReadyPulse();
+                readySoundInterval = setInterval(playReadyPulse, 1000);
+            }
+
+            function stopReadySound() {
+                if (readySoundInterval) {
+                    clearInterval(readySoundInterval);
+                    readySoundInterval = null;
+                }
+            }
+
+            function setSearchButtonState(isSearching) {
+                if (!searchButton) {
+                    return;
+                }
+                searchButton.classList.toggle("searching", isSearching);
+                searchButton.textContent = isSearching ? uiText.cancelSearch : uiText.findOpponent;
+            }
+
+            function setReadyBadge(element, accepted) {
+                if (!element) {
+                    return;
+                }
+                element.textContent = accepted ? uiText.accepted : uiText.pending;
+                element.classList.toggle("accepted", accepted);
+                element.classList.toggle("pending", !accepted);
+            }
+
+            function openMatchFoundModal(data) {
+                currentStatus = "ready_check";
+                currentBattleId = data.battle_id;
+                modal.classList.remove("hidden");
+                modalOpponentName.textContent = data.opponent_name || uiText.unknown;
+                setReadyBadge(modalYourReady, !!data.your_ready);
+                setReadyBadge(modalOpponentReady, !!data.opponent_ready);
+                modalTimer.textContent = String(data.ready_remaining_seconds || 15);
+                startReadySound();
+                setSearchButtonState(true);
+                modalAcceptButton.disabled = !!data.your_ready;
+                modalAcceptButton.textContent = data.your_ready ? uiText.alreadyAccepted : uiText.play;
+            }
+
+            function closeMatchFoundModal() {
+                modal.classList.add("hidden");
+                stopReadySound();
+            }
+
+            async function startSearch() {
+                setSearchButtonState(true);
+                const response = await fetch("/battle/search-pvp", {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await response.json();
+                currentBattleId = data.battle_id || null;
+                currentStatus = data.status || "waiting";
+            }
+
+            async function cancelSearch() {
+                await fetch("/battle/cancel-search", {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                currentBattleId = null;
+                currentStatus = "idle";
+                setSearchButtonState(false);
+                closeMatchFoundModal();
+            }
+
+            async function acceptMatch() {
+                if (!currentBattleId) {
+                    return;
+                }
+
+                const response = await fetch("/battle/match/" + currentBattleId + "/accept", {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await response.json();
+
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                    return;
+                }
+
+                if (data.status === "ready_check") {
+                    openMatchFoundModal({
+                        battle_id: currentBattleId,
+                        opponent_name: modalOpponentName.textContent,
+                        your_ready: data.your_ready,
+                        opponent_ready: data.opponent_ready,
+                        ready_remaining_seconds: data.ready_remaining_seconds
+                    });
+                }
+            }
+
+            async function pollPvpState() {
+                if (pollingLocked) {
+                    return;
+                }
+
+                pollingLocked = true;
+                try {
+                    const response = await fetch(searchStateUrl, {
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    });
+                    const data = await response.json();
+
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
+
+                    if (data.status === "idle" || data.status === "expired") {
+                        currentBattleId = null;
+                        currentStatus = "idle";
+                        setSearchButtonState(false);
+                        closeMatchFoundModal();
+                        return;
+                    }
+
+                    if (data.status === "waiting") {
+                        currentBattleId = data.battle_id;
+                        currentStatus = "waiting";
+                        setSearchButtonState(true);
+                        closeMatchFoundModal();
+                        return;
+                    }
+
+                    if (data.status === "ready_check") {
+                        openMatchFoundModal(data);
+                        return;
+                    }
+
+                    if (data.status === "active" && data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    }
+                } catch (error) {
+                    console.debug(error);
+                } finally {
+                    pollingLocked = false;
+                }
+            }
+
+            if (searchButton) {
+                searchButton.addEventListener("click", function () {
+                    if (currentStatus === "waiting" || currentStatus === "ready_check") {
+                        cancelSearch();
+                    } else {
+                        startSearch().catch(function () {
+                            if (searchForm) {
+                                searchButton.type = "submit";
+                                searchForm.requestSubmit();
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (modalAcceptButton) {
+                modalAcceptButton.addEventListener("click", acceptMatch);
+            }
+
+            if (modalCancelButton) {
+                modalCancelButton.addEventListener("click", cancelSearch);
+            }
+
+            pollPvpState();
+            setInterval(pollPvpState, 1000);
+        </script>
+    {% endif %}
+</body>
+</html>

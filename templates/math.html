@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("math.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="section-hero">
+            <span class="eyebrow">{{ tr("nav.learning") }} / {{ tr("learning.math") }}</span>
+            <h1>{{ tr("math.hero") }}</h1>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("math.addsub") }}</h2>
+                <a href="/start/easy?mode=addsub"><button>{{ level_label("easy") }}</button></a>
+                <br><br>
+                <a href="/start/medium?mode=addsub"><button>{{ level_label("medium") }}</button></a>
+                <br><br>
+                <a href="/start/hard?mode=addsub"><button>{{ level_label("hard") }}</button></a>
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("math.mix") }}</h2>
+                <a href="/start/easy?mode=mix"><button>{{ level_label("easy") }}</button></a>
+                <br><br>
+                <a href="/start/medium?mode=mix"><button>{{ level_label("medium") }}</button></a>
+                <br><br>
+                <a href="/start/hard?mode=mix"><button>{{ level_label("hard") }}</button></a>
+            </article>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link active" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

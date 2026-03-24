@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("stats.title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <section class="section-hero">
+            <span class="eyebrow">{{ tr("nav.profile") }} / {{ tr("stats.title") }}</span>
+            <h1>{{ tr("stats.hero") }}</h1>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("stats.summary") }}</h2>
+                <div class="feature-list">
+                    <div class="feature-item"><strong>{{ tr("stats.total_activities") }}</strong><span>{{ total_attempts }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("stats.overall_accuracy") }}</strong><span>{{ avg_percent }}%</span></div>
+                </div>
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("stats.learning_battle") }}</h2>
+                <div class="feature-list">
+                    <div class="feature-item"><strong>{{ tr("stats.training_count") }}</strong><span>{{ training_attempts }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("stats.battle_matches") }}</strong><span>{{ battle_matches }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("stats.battle_wins") }}</strong><span>{{ battle_wins }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("stats.battle_losses") }}</strong><span>{{ battle_losses }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("stats.battle_draws") }}</strong><span>{{ battle_draws }}</span></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("stats.best_learning") }}</h2>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <strong>{{ tr("section.math") }}</strong>
+                        <span>{{ level_label("easy") }}: {% if best_learning_by_level.math.easy %}{{ best_learning_by_level.math.easy.score }}/{{ best_learning_by_level.math.easy.total }} ({{ best_learning_by_level.math.easy.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                        <span>{{ level_label("medium") }}: {% if best_learning_by_level.math.medium %}{{ best_learning_by_level.math.medium.score }}/{{ best_learning_by_level.math.medium.total }} ({{ best_learning_by_level.math.medium.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                        <span>{{ level_label("hard") }}: {% if best_learning_by_level.math.hard %}{{ best_learning_by_level.math.hard.score }}/{{ best_learning_by_level.math.hard.total }} ({{ best_learning_by_level.math.hard.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                    </div>
+                    <div class="feature-item">
+                        <strong>{{ tr("section.logic") }}</strong>
+                        <span>{{ level_label("easy") }}: {% if best_learning_by_level.logic.easy %}{{ best_learning_by_level.logic.easy.score }}/{{ best_learning_by_level.logic.easy.total }} ({{ best_learning_by_level.logic.easy.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                        <span>{{ level_label("medium") }}: {% if best_learning_by_level.logic.medium %}{{ best_learning_by_level.logic.medium.score }}/{{ best_learning_by_level.logic.medium.total }} ({{ best_learning_by_level.logic.medium.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                        <span>{{ level_label("hard") }}: {% if best_learning_by_level.logic.hard %}{{ best_learning_by_level.logic.hard.score }}/{{ best_learning_by_level.logic.hard.total }} ({{ best_learning_by_level.logic.hard.percent }}%){% else %}{{ tr("stats.no_level_best") }}{% endif %}</span>
+                    </div>
+                    {% if not best_learning_by_level.math.easy and not best_learning_by_level.math.medium and not best_learning_by_level.math.hard and not best_learning_by_level.logic.easy and not best_learning_by_level.logic.medium and not best_learning_by_level.logic.hard %}
+                        <p>{{ tr("stats.no_best") }}</p>
+                    {% endif %}
+                </div>
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("stats.by_section") }}</h2>
+                <div class="feature-list">
+                    <div class="feature-item"><strong>{{ tr("section.math") }}</strong><span>{{ section_counts.math }}</span></div>
+                    <div class="feature-item"><strong>{{ tr("section.logic") }}</strong><span>{{ section_counts.logic }}</span></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="landing-grid">
+            <article class="landing-panel">
+                <h2>{{ tr("stats.by_level") }}</h2>
+                <div class="feature-list">
+                    <div class="feature-item"><strong>{{ level_label("easy") }}</strong><span>{{ level_counts.easy }}</span></div>
+                    <div class="feature-item"><strong>{{ level_label("medium") }}</strong><span>{{ level_counts.medium }}</span></div>
+                    <div class="feature-item"><strong>{{ level_label("hard") }}</strong><span>{{ level_counts.hard }}</span></div>
+                </div>
+            </article>
+
+            <article class="landing-panel">
+                <h2>{{ tr("stats.last_learning") }}</h2>
+                <div class="feature-list">
+                    {% if last_results %}
+                        {% for result in last_results %}
+                            <div class="feature-item">
+                                <strong>{{ section_label(result.section) }} • {{ level_label(result.level) }}</strong>
+                                <span>{{ result.score }}/{{ result.total }} • {{ result.percent }}%</span>
+                                <span>{{ result.created_at }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>{{ tr("stats.no_last") }}</p>
+                    {% endif %}
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="/learning" class="bottom-nav-link" aria-label="{{ tr('nav.learning') }}" title="{{ tr('nav.learning') }}"><img src="{{ url_for('icon_image', filename='Learning.png') }}" alt="{{ tr('nav.learning') }}"></a>
+        <a href="/battle" class="bottom-nav-link" aria-label="{{ tr('nav.battle') }}" title="{{ tr('nav.battle') }}"><img src="{{ url_for('icon_image', filename='Battle.png') }}" alt="{{ tr('nav.battle') }}"></a>
+        <a href="/profile" class="bottom-nav-link active" aria-label="{{ tr('nav.profile') }}" title="{{ tr('nav.profile') }}"><img src="{{ url_for('icon_image', filename='Profile.png') }}" alt="{{ tr('nav.profile') }}"></a>
+    </nav>
+</body>
+</html>

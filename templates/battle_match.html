@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ tr("battle.match_title") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="battle-body">
+    <main class="page battle-page">
+        <section class="landing-panel battle-panel">
+            <div class="battle-progress-shell battle-progress-top">
+                <div class="tug-bar battle-tug-bar dual-tug-bar">
+                    <div id="battle-progress-left" class="duel-track duel-fill-left {{ your_track_class }}" style="width: {{ progress }}%;"></div>
+                    <div id="battle-progress-right" class="duel-track duel-fill-right {{ opponent_track_class }}" style="width: {{ 100 - progress }}%;"></div>
+                    <div id="battle-progress-divider" class="tug-center" style="left: {{ progress }}%;"></div>
+                </div>
+            </div>
+
+            <div class="battle-header">
+                <div>
+                    <span class="eyebrow">{{ tr("nav.battle") }}</span>
+                    <h2>{{ current_user.name }} vs {{ opponent.name }}</h2>
+                </div>
+                <div class="battle-meta">
+                    <span id="battle-round-label">{{ tr("battle.question", current=current_index, total=total_tasks_label) }}</span>
+                </div>
+            </div>
+
+            <div class="battle-timer-hero">
+                <span class="battle-timer-label">{{ tr("battle.until_end") }}</span>
+                <b id="battle-timer" class="battle-timer-value">{{ "%02d:%02d"|format(remaining_seconds // 60, remaining_seconds % 60) }}</b>
+            </div>
+
+            <div class="tug-scoreboard">
+                <div class="tug-player">
+                    <strong>{{ current_user.name }}</strong>
+                    <span><span id="your-score">{{ your_score }}</span> {{ tr("battle.points") }}</span>
+                    {% if your_lives is not none %}<span id="your-lives">{{ tr("battle.lives", count=your_lives) }}</span>{% endif %}
+                </div>
+                <div class="tug-player right">
+                    <strong id="opponent-name">{{ opponent.name }}</strong>
+                    <span><span id="opponent-score">{{ opponent_score }}</span> {{ tr("battle.points") }}</span>
+                    {% if opponent_lives is not none %}<span id="opponent-lives">{{ tr("battle.lives", count=opponent_lives) }}</span>{% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-panel battle-panel battle-question-panel">
+            {% if current_task %}
+                <div class="battle-question-wrap">
+                    <h1 class="battle-question">{{ current_task.q }}</h1>
+                </div>
+
+                <form method="POST" action="/battle/match/{{ battle.id }}/answer" id="battle-answer-form" class="battle-answer-form">
+                    <input type="hidden" name="response_seconds" id="response_seconds" value="0">
+                    <div class="answer-grid">
+                        {% for option in current_task.options %}
+                            <button type="submit" name="user_answer" value="{{ option }}" class="answer-option">
+                                <span class="answer-option-index">{{ loop.index }}</span>
+                                <span class="answer-option-value">{{ option }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </form>
+
+                <div id="points-popup" class="points-popup {% if last_answer_submitted and last_answer_correct and last_answer_score > 0 %}show{% endif %}">
+                    {{ tr("battle.points_popup", score=last_answer_score) }}
+                </div>
+
+                <div class="battle-action-row">
+                    <form method="POST" action="/battle/match/{{ battle.id }}/surrender" class="battle-inline-form">
+                        <button type="submit" class="battle-surrender-chip">{{ tr("battle.surrender") }}</button>
+                    </form>
+
+                    <button type="button" class="sound-toggle" id="sound-toggle" aria-label="Toggle sound">
+                        <img id="sound-toggle-icon" src="{{ sound_on_icon_url }}" alt="Sound">
+                    </button>
+                </div>
+
+            {% else %}
+                <p>{{ tr("battle.wait_finish") }}</p>
+                <a href="/battle/match/{{ battle.id }}" class="action-link">{{ tr("battle.refresh") }}</a>
+            {% endif %}
+        </section>
+    </main>
+
+    <audio id="countdown-audio" src="{{ url_for('static', filename='audio/cs2_10s_countdown.mp3') }}" preload="auto"></audio>
+    <audio id="background-audio" src="{{ background_audio_url }}" preload="auto" loop></audio>
+
+    <script>
+        const BATTLE_ID = {{ battle.id }};
+        const BATTLE_TYPE = "{{ battle.battle_type }}";
+        let remainingSeconds = {{ remaining_seconds }};
+        let battleDeadlineAt = {{ battle_deadline_ts }} * 1000;
+        const lastAnswerSubmitted = {{ "true" if last_answer_submitted else "false" }};
+        const lastAnswerCorrect = {{ "true" if last_answer_correct else "false" }};
+        const lastAnswerScore = {{ last_answer_score }};
+        const yourTrackClass = "{{ your_track_class }}";
+        const opponentTrackClass = "{{ opponent_track_class }}";
+        const battleQuestionText = {{ tr("battle.question", current="__CURRENT__", total=total_tasks_label)|tojson }};
+        let currentTotalTasksLabel = {{ total_tasks_label|tojson }};
+        const battlePointsText = {{ tr("battle.points")|tojson }};
+        const battleLivesPattern = {{ tr("battle.lives", count="__COUNT__")|tojson }};
+
+        const timerElement = document.getElementById("battle-timer");
+        const responseSecondsInput = document.getElementById("response_seconds");
+        const battleForm = document.getElementById("battle-answer-form");
+        const soundToggle = document.getElementById("sound-toggle");
+        const soundToggleIcon = document.getElementById("sound-toggle-icon");
+        const pointsPopup = document.getElementById("points-popup");
+        const yourScoreElement = document.getElementById("your-score");
+        const opponentScoreElement = document.getElementById("opponent-score");
+        const opponentNameElement = document.getElementById("opponent-name");
+        const progressLeftElement = document.getElementById("battle-progress-left");
+        const progressRightElement = document.getElementById("battle-progress-right");
+        const progressDividerElement = document.getElementById("battle-progress-divider");
+        const yourLivesElement = document.getElementById("your-lives");
+        const opponentLivesElement = document.getElementById("opponent-lives");
+        const roundLabelElement = document.getElementById("battle-round-label");
+        const countdownAudio = document.getElementById("countdown-audio");
+        const backgroundAudio = document.getElementById("background-audio");
+        const soundOnIconUrl = "{{ sound_on_icon_url }}";
+        const soundOffIconUrl = "{{ sound_off_icon_url }}";
+        const backgroundAudioStorageKey = "battle_bg_position_" + BATTLE_TYPE + "_" + BATTLE_ID;
+        let warningPlayedForSecond = null;
+        let tenSecondCountdownTriggered = false;
+        let pollingLocked = false;
+        let answerSubmitting = false;
+        let currentRoundIndex = {{ current_index }};
+        const questionStartedAt = Date.now();
+
+        let audioContext = null;
+        let soundEnabled = localStorage.getItem("battle_sound_enabled") === "1";
+
+        function ensureAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        function stopSoundtrack() {
+            if (backgroundAudio) {
+                backgroundAudio.muted = true;
+            }
+        }
+
+        async function startSoundtrack() {
+            if (!soundEnabled || !backgroundAudio) {
+                return;
+            }
+            backgroundAudio.muted = false;
+            backgroundAudio.volume = BATTLE_TYPE === "bot" ? 0.14 : 0.12;
+            const savedTime = parseFloat(sessionStorage.getItem(backgroundAudioStorageKey) || "0");
+            if (!Number.isNaN(savedTime) && savedTime > 0 && Math.abs(backgroundAudio.currentTime - savedTime) > 0.75) {
+                try {
+                    backgroundAudio.currentTime = savedTime;
+                } catch (error) {
+                    console.debug(error);
+                }
+            }
+            try {
+                await backgroundAudio.play();
+            } catch (error) {
+                console.debug(error);
+            }
+        }
+
+        function updateSoundButton() {
+            if (!soundToggle || !soundToggleIcon) {
+                return;
+            }
+            soundToggle.classList.toggle("active", soundEnabled);
+            soundToggleIcon.src = soundEnabled ? soundOnIconUrl : soundOffIconUrl;
+        }
+
+        function playToneSequence(frequencies, duration) {
+            if (!soundEnabled) {
+                return;
+            }
+
+            const context = ensureAudioContext();
+            const now = context.currentTime;
+            frequencies.forEach((frequency, index) => {
+                const oscillator = context.createOscillator();
+                const gain = context.createGain();
+                oscillator.type = "triangle";
+                oscillator.frequency.setValueAtTime(frequency, now + index * duration);
+                gain.gain.setValueAtTime(0.0001, now + index * duration);
+                gain.gain.exponentialRampToValueAtTime(0.07, now + index * duration + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + index * duration + duration);
+                oscillator.connect(gain);
+                gain.connect(context.destination);
+                oscillator.start(now + index * duration);
+                oscillator.stop(now + index * duration + duration);
+            });
+        }
+
+        function playCorrectSound() { playToneSequence([523.25, 659.25, 783.99], 0.12); }
+        function playWrongSound() { playToneSequence([220, 174.61, 146.83], 0.15); }
+
+        function playWarningTick() {
+            if (!soundEnabled) {
+                return;
+            }
+            const context = ensureAudioContext();
+            const now = context.currentTime;
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.type = "square";
+            oscillator.frequency.setValueAtTime(988, now);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.05, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start(now);
+            oscillator.stop(now + 0.12);
+        }
+
+        async function playTenSecondCountdown() {
+            if (!soundEnabled || tenSecondCountdownTriggered) {
+                return;
+            }
+            tenSecondCountdownTriggered = true;
+            try {
+                if (countdownAudio) {
+                    countdownAudio.currentTime = 0;
+                    await countdownAudio.play();
+                    return;
+                }
+            } catch (error) {
+                console.debug(error);
+            }
+            playWarningTick();
+        }
+
+        function getDisplayedRemainingSeconds() {
+            return Math.max(0, Math.ceil((battleDeadlineAt - Date.now()) / 1000));
+        }
+
+        function syncBattleDeadline(serverSeconds, serverDeadlineTs) {
+            const localSeconds = getDisplayedRemainingSeconds();
+            if (typeof serverDeadlineTs === "number") {
+                const nextDeadlineAt = serverDeadlineTs * 1000;
+                if (nextDeadlineAt < battleDeadlineAt) {
+                    battleDeadlineAt = nextDeadlineAt;
+                    return;
+                }
+            }
+            if (serverSeconds < localSeconds) {
+                battleDeadlineAt = Date.now() + serverSeconds * 1000;
+            }
+        }
+
+        function updateTimer() {
+            remainingSeconds = getDisplayedRemainingSeconds();
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            if (timerElement) {
+                timerElement.textContent = String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+                timerElement.classList.toggle("danger", remainingSeconds <= 10);
+            }
+            if (remainingSeconds === 10) {
+                playTenSecondCountdown();
+            }
+            if (remainingSeconds <= 10 && remainingSeconds > 0 && warningPlayedForSecond !== remainingSeconds) {
+                warningPlayedForSecond = remainingSeconds;
+                playWarningTick();
+            }
+            if (remainingSeconds <= 0) {
+                window.location.href = "/battle/match/" + BATTLE_ID;
+            }
+        }
+
+        function showAnswerEffects() {
+            if (!lastAnswerSubmitted) {
+                return;
+            }
+            if (lastAnswerCorrect) {
+                playCorrectSound();
+                if (pointsPopup && lastAnswerScore > 0) {
+                    pointsPopup.classList.add("show");
+                    setTimeout(() => pointsPopup.classList.remove("show"), 1600);
+                }
+            } else {
+                playWrongSound();
+            }
+        }
+
+        function livesText(count) {
+            return battleLivesPattern.replace("__COUNT__", count);
+        }
+
+        function questionText(index) {
+            return battleQuestionText.replace("__CURRENT__", index).replace({{ total_tasks_label|tojson }}, currentTotalTasksLabel);
+        }
+
+        function updateLiveBattleState(data) {
+            if (typeof data.remaining_seconds === "number") {
+                syncBattleDeadline(data.remaining_seconds, data.battle_deadline_ts);
+            }
+            if (yourScoreElement && typeof data.your_score === "number") {
+                yourScoreElement.textContent = data.your_score;
+            }
+            if (opponentScoreElement && typeof data.opponent_score === "number") {
+                opponentScoreElement.textContent = data.opponent_score;
+            }
+            if (opponentNameElement && data.opponent_name) {
+                opponentNameElement.textContent = data.opponent_name;
+            }
+            if (progressLeftElement && typeof data.progress === "number") {
+                progressLeftElement.style.width = data.progress + "%";
+                progressLeftElement.className = "duel-track duel-fill-left " + yourTrackClass;
+            }
+            if (progressRightElement && typeof data.progress === "number") {
+                progressRightElement.style.width = (100 - data.progress) + "%";
+                progressRightElement.className = "duel-track duel-fill-right " + opponentTrackClass;
+            }
+            if (progressDividerElement && typeof data.progress === "number") {
+                progressDividerElement.style.left = data.progress + "%";
+            }
+            if (roundLabelElement && typeof data.current_index === "number") {
+                if (typeof data.total_tasks_label === "string") {
+                    currentTotalTasksLabel = data.total_tasks_label;
+                }
+                roundLabelElement.textContent = questionText(data.current_index);
+            }
+            if (yourLivesElement && data.your_lives !== null && data.your_lives !== undefined) {
+                yourLivesElement.textContent = livesText(data.your_lives);
+            }
+            if (opponentLivesElement && data.opponent_lives !== null && data.opponent_lives !== undefined) {
+                opponentLivesElement.textContent = livesText(data.opponent_lives);
+            }
+        }
+
+        async function pollBattleState() {
+            if (pollingLocked || answerSubmitting) {
+                return;
+            }
+            pollingLocked = true;
+            try {
+                const response = await fetch("/battle/match/" + BATTLE_ID + "/status", {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await response.json();
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                    return;
+                }
+                if (data.status !== "active") {
+                    window.location.href = "/battle/match/" + BATTLE_ID;
+                    return;
+                }
+                if (typeof data.current_index === "number" && data.current_index !== currentRoundIndex) {
+                    window.location.href = "/battle/match/" + BATTLE_ID;
+                    return;
+                }
+                updateLiveBattleState(data);
+            } catch (error) {
+                console.debug(error);
+            } finally {
+                pollingLocked = false;
+            }
+        }
+
+        function enableSound() {
+            soundEnabled = true;
+            localStorage.setItem("battle_sound_enabled", "1");
+            updateSoundButton();
+            startSoundtrack();
+            showAnswerEffects();
+        }
+
+        updateSoundButton();
+        if (soundEnabled) {
+            startSoundtrack();
+            showAnswerEffects();
+        }
+
+        if (backgroundAudio) {
+            backgroundAudio.addEventListener("timeupdate", function () {
+                sessionStorage.setItem(backgroundAudioStorageKey, String(backgroundAudio.currentTime));
+            });
+        }
+
+        document.addEventListener("click", function handleFirstInteraction() {
+            if (!soundEnabled) {
+                enableSound();
+            }
+            document.removeEventListener("click", handleFirstInteraction);
+        }, { once: true });
+
+        window.addEventListener("pageshow", function (event) {
+            const nav = performance.getEntriesByType("navigation")[0];
+            if (event.persisted || (nav && nav.type === "back_forward")) {
+                window.location.reload();
+            }
+        });
+
+        window.addEventListener("pagehide", function () {
+            if (backgroundAudio) {
+                sessionStorage.setItem(backgroundAudioStorageKey, String(backgroundAudio.currentTime));
+            }
+        });
+
+        if (soundToggle) {
+            soundToggle.addEventListener("click", function () {
+                soundEnabled = !soundEnabled;
+                localStorage.setItem("battle_sound_enabled", soundEnabled ? "1" : "0");
+                updateSoundButton();
+                if (soundEnabled) {
+                    startSoundtrack();
+                } else {
+                    stopSoundtrack();
+                    if (countdownAudio) {
+                        countdownAudio.pause();
+                        countdownAudio.currentTime = 0;
+                    }
+                }
+            });
+        }
+
+        updateTimer();
+        setInterval(updateTimer, 1000);
+        setInterval(pollBattleState, 1500);
+
+        if (battleForm) {
+            battleForm.addEventListener("submit", function () {
+                answerSubmitting = true;
+                if (backgroundAudio) {
+                    sessionStorage.setItem(backgroundAudioStorageKey, String(backgroundAudio.currentTime));
+                }
+                if (responseSecondsInput) {
+                    responseSecondsInput.value = ((Date.now() - questionStartedAt) / 1000).toFixed(2);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
