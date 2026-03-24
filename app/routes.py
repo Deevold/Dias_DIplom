@@ -23,6 +23,7 @@ from app.db.database import (
     get_battle_by_id,
     get_best_result,
     get_best_result_by_section_and_level,
+    get_finished_bot_battles_for_user,
     get_finished_pvp_battles_for_user,
     get_favorite_section,
     get_last_results,
@@ -683,6 +684,7 @@ def format_match_duration(started_at, finished_at):
 
 def build_profile_dashboard(user_id):
     battles = list(reversed(get_finished_pvp_battles_for_user(user_id)))
+    bot_battles = list(reversed(get_finished_bot_battles_for_user(user_id)))
     current_user = get_current_user()
     current_elo = current_user["elo"] if current_user else 1000
 
@@ -698,6 +700,11 @@ def build_profile_dashboard(user_id):
     longest_winstreak = 0
     current_streak = 0
     history_rows = []
+    ai_stats = {
+        "easy": {"matches": 0, "wins": 0, "draws": 0, "losses": 0, "win_percent": 0},
+        "medium": {"matches": 0, "wins": 0, "draws": 0, "losses": 0, "win_percent": 0},
+        "hard": {"matches": 0, "wins": 0, "draws": 0, "losses": 0, "win_percent": 0},
+    }
 
     for index, battle in enumerate(battles, start=1):
         if battle["player_one_id"] == user_id:
@@ -748,6 +755,23 @@ def build_profile_dashboard(user_id):
             }
         )
 
+    for battle in bot_battles:
+        level_code = (battle.get("bot_level") or "easy").lower()
+        if level_code not in ai_stats:
+            continue
+        ai_stats[level_code]["matches"] += 1
+        if is_draw_value(battle["winner_name"]):
+            ai_stats[level_code]["draws"] += 1
+        elif battle["winner_id"] == user_id:
+            ai_stats[level_code]["wins"] += 1
+        else:
+            ai_stats[level_code]["losses"] += 1
+
+    for level_code, stats in ai_stats.items():
+        matches = stats["matches"]
+        stats["label"] = translate_bot_level(level_code, get_current_language(current_user))
+        stats["win_percent"] = round((stats["wins"] / matches) * 100) if matches else 0
+
     battle_stats = build_profile_battle_stats(user_id, current_user)
     return {
         "elo_points": elo_points,
@@ -755,6 +779,7 @@ def build_profile_dashboard(user_id):
         "longest_winstreak": longest_winstreak,
         "matches": battle_stats["total_matches"],
         "history_rows": list(reversed(history_rows)),
+        "ai_stats": ai_stats,
     }
 
 
@@ -878,6 +903,7 @@ def register_routes(app):
                 open_pvp_battle=None,
             )
 
+        language = get_current_language(current_user)
         open_pvp_battle = get_user_open_pvp_battle(current_user["id"])
         if open_pvp_battle:
             open_pvp_battle = maybe_expire_ready_check(open_pvp_battle)
@@ -919,8 +945,6 @@ def register_routes(app):
 
         return render_template(
             "battle.html",
-            active_battles=active_battles,
-            recent_battles=recent_battles,
             bot_levels=app.config["BOT_LEVELS"],
             open_pvp_battle=open_pvp_battle,
         )

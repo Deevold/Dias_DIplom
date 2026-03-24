@@ -73,11 +73,10 @@
 
         <section class="landing-grid">
             <article class="landing-panel profile-actions-panel">
-                <h2>{{ tr("profile.quick_actions") }}</h2>
+                <h2>{{ tr("profile.overall_stats") }}</h2>
                 <div class="feature-list">
-                    <a href="/battle" class="action-link">{{ tr("nav.battle") }}</a>
-                    <a href="/stats" class="action-link action-link-muted">{{ tr("profile.overall_stats") }}</a>
-                    <a href="/history" class="action-link action-link-muted">{{ tr("profile.history") }}</a>
+                    <a href="/stats" class="action-link">{{ tr("profile.stats_tab") }}</a>
+                    <a href="/history" class="action-link action-link-muted">{{ tr("profile.history_tab") }}</a>
                 </div>
             </article>
 
@@ -189,6 +188,22 @@
                             <span>{{ tr("profile.current_elo_metric") }}</span>
                             <strong>{{ player.elo }}</strong>
                         </article>
+                    </div>
+                </div>
+
+                <div class="leaderboard-block profile-ai-stats-block">
+                    <h3>{{ tr("profile.ai_stats") }}</h3>
+                    <div class="leaderboard-list">
+                        {% for level_code, ai in dashboard.ai_stats.items() %}
+                            <div class="leaderboard-item">
+                                <span class="leaderboard-rank">AI</span>
+                                <div class="leaderboard-player">
+                                    <strong>{{ ai.label }}</strong>
+                                    <span>{{ tr("profile.matches_metric") }}: {{ ai.matches }} · {{ tr("profile.winrate_metric") }}: {{ ai.win_percent }}%</span>
+                                </div>
+                                <b>{{ ai.wins }}/{{ ai.matches }}</b>
+                            </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>

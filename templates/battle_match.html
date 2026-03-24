@@ -53,13 +53,7 @@
             {% if battle.battle_type == "bot" %}
                 <div class="battle-ai-status" id="battle-ai-status">
                     <span class="battle-ai-status-badge" id="battle-ai-status-badge">{{ tr("battle.ai_thinking") }}</span>
-                    <span class="battle-ai-status-text" id="battle-ai-status-text">
-                        {% if ai_state and ai_state.remaining_seconds is not none %}
-                            {{ tr("battle.ai_ready_in", seconds=ai_state.remaining_seconds) }}
-                        {% else %}
-                            {{ tr("battle.ai_thinking") }}
-                        {% endif %}
-                    </span>
+                    <span class="battle-ai-status-text" id="battle-ai-status-text">{{ tr("battle.ai_thinking") }}</span>
                 </div>
             {% endif %}
         </section>
@@ -134,7 +128,6 @@
         const transitionWrongText = {{ tr("battle.transition_wrong")|tojson }};
         const aiThinkingText = {{ tr("battle.ai_thinking")|tojson }};
         const aiAnsweredText = {{ tr("battle.ai_answered")|tojson }};
-        const aiReadyPattern = {{ tr("battle.ai_ready_in", seconds="__SECONDS__")|tojson }};
 
         const timerElement = document.getElementById("battle-timer");
         const responseSecondsInput = document.getElementById("response_seconds");
@@ -368,7 +361,7 @@
             }, 1400);
         }
 
-        function updateAiStatus(thinking, nextActionSeconds) {
+        function updateAiStatus(thinking) {
             if (!aiStatusElement || BATTLE_TYPE !== "bot") {
                 return;
             }
@@ -378,11 +371,7 @@
                 aiStatusBadgeElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
             }
             if (aiStatusTextElement) {
-                if (currentAiThinking && nextActionSeconds !== null && nextActionSeconds !== undefined) {
-                    aiStatusTextElement.textContent = aiReadyPattern.replace("__SECONDS__", nextActionSeconds);
-                } else {
-                    aiStatusTextElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
-                }
+                aiStatusTextElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
             }
         }
 
@@ -440,7 +429,7 @@
                 showOpponentAnswered(data.opponent_name);
             }
             if (BATTLE_TYPE === "bot" && typeof data.ai_thinking === "boolean") {
-                updateAiStatus(data.ai_thinking, data.ai_next_action_seconds);
+                updateAiStatus(data.ai_thinking);
             }
             if (typeof data.your_answer_count === "number") {
                 currentYourAnswerCount = data.your_answer_count;

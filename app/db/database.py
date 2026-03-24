@@ -814,6 +814,25 @@ def get_finished_pvp_battles_for_user(user_id):
     return _normalize_battle_rows(rows)
 
 
+def get_finished_bot_battles_for_user(user_id):
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute(
+        """
+        SELECT *
+        FROM battles
+        WHERE battle_type = 'bot'
+          AND status NOT IN ('active', 'waiting', 'ready_check')
+          AND player_one_id = %s
+        ORDER BY COALESCE(finished_at, started_at) DESC
+        """,
+        (user_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return _normalize_battle_rows(rows)
+
+
 def get_user_open_pvp_battle(user_id):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
