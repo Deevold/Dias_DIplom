@@ -16,6 +16,7 @@ from app.db.database import (
     finish_battle,
     get_active_battles_for_user,
     get_all_results,
+    get_all_users_for_leaderboard,
     get_attempts_count_by_level,
     get_attempts_count_by_section,
     get_average_percent,
@@ -370,7 +371,7 @@ def finalize_real_battle(battle, player_one, player_two):
     if battle["player_one_score"] == battle["player_two_score"]:
         add_battle_result_to_user(player_one["id"], "draw")
         add_battle_result_to_user(player_two["id"], "draw")
-        finish_battle(battle["id"], None, DRAW_MARKER)
+        finish_battle(battle["id"], None, DRAW_MARKER, player_one_elo_delta=0, player_two_elo_delta=0)
         return {
             "winner_name": DRAW_MARKER,
             "elo_gain": 0,
@@ -392,7 +393,13 @@ def finalize_real_battle(battle, player_one, player_two):
     add_battle_result_to_user(winner["id"], "win")
     add_battle_result_to_user(loser["id"], "loss")
     add_user_points(winner["id"], max(50, battle["player_one_score"] if winner["id"] == player_one["id"] else battle["player_two_score"]))
-    finish_battle(battle["id"], winner["id"], winner["name"])
+    finish_battle(
+        battle["id"],
+        winner["id"],
+        winner["name"],
+        player_one_elo_delta=elo_gain if winner["id"] == player_one["id"] else -elo_gain,
+        player_two_elo_delta=elo_gain if winner["id"] == player_two["id"] else -elo_gain,
+    )
 
     return {
         "winner_name": winner["name"],
@@ -425,7 +432,13 @@ def surrender_battle_for_user(battle, current_user):
     add_battle_result_to_user(winner["id"], "win")
     add_battle_result_to_user(loser["id"], "loss")
     add_user_points(winner["id"], 50)
-    finish_battle(battle["id"], winner["id"], winner["name"])
+    finish_battle(
+        battle["id"],
+        winner["id"],
+        winner["name"],
+        player_one_elo_delta=winner_elo_gain if winner["id"] == battle["player_one_id"] else -loser_elo_penalty,
+        player_two_elo_delta=winner_elo_gain if winner["id"] == battle["player_two_id"] else -loser_elo_penalty,
+    )
 
 
 def maybe_finish_battle(app, battle):
@@ -583,6 +596,148 @@ def build_overall_stats(user_id):
         "battle_wins": battle_wins,
         "battle_losses": battle_losses,
         "battle_draws": battle_draws,
+    }
+
+
+def build_profile_leaderboards(current_user_id):
+    leaderboard_users = [format_user_card(row) for row in get_all_users_for_leaderboard()]
+    leaderboard_entries = []
+
+    for user in leaderboard_users:
+        stats = build_profile_battle_stats(user["id"], user)
+        leaderboard_entries.append(
+            {
+                "user": user,
+                "stats": stats,
+                "is_current_user": user["id"] == current_user_id,
+            }
+        )
+
+    top_elo = sorted(
+        leaderboard_entries,
+        key=lambda entry: (-entry["user"]["elo"], entry["user"]["name"].lower()),
+    )[:5]
+
+    top_wins = sorted(
+        [entry for entry in leaderboard_entries if entry["stats"]["total_matches"] > 0],
+        key=lambda entry: (-entry["stats"]["wins"], -entry["user"]["elo"], entry["user"]["name"].lower()),
+    )[:5]
+
+    top_accuracy = sorted(
+        [entry for entry in leaderboard_entries if entry["stats"]["total_matches"] > 0],
+        key=lambda entry: (
+            -entry["stats"]["accuracy_percent"],
+            -entry["stats"]["total_matches"],
+            -entry["user"]["elo"],
+            entry["user"]["name"].lower(),
+        ),
+    )[:5]
+
+    return {
+        "elo": top_elo,
+        "wins": top_wins,
+        "accuracy": top_accuracy,
+    }
+
+
+def parse_battle_datetime(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    for pattern in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+        try:
+            return datetime.strptime(value, pattern)
+        except ValueError:
+            continue
+    return None
+
+
+def format_match_duration(started_at, finished_at):
+    start_dt = parse_battle_datetime(started_at)
+    finish_dt = parse_battle_datetime(finished_at)
+    if not start_dt or not finish_dt:
+        return "—"
+    total_seconds = max(0, int((finish_dt - start_dt).total_seconds()))
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def build_profile_dashboard(user_id):
+    battles = list(reversed(get_finished_pvp_battles_for_user(user_id)))
+    current_user = get_current_user()
+    current_elo = current_user["elo"] if current_user else 1000
+
+    elo_points = []
+    for battle in reversed(battles):
+        if battle["player_one_id"] == user_id:
+            current_elo -= battle.get("player_one_elo_delta", 0) or 0
+        else:
+            current_elo -= battle.get("player_two_elo_delta", 0) or 0
+
+    elo_points.append({"label": "Start", "elo": current_elo})
+
+    longest_winstreak = 0
+    current_streak = 0
+    history_rows = []
+
+    for index, battle in enumerate(battles, start=1):
+        if battle["player_one_id"] == user_id:
+            opponent_id = battle["player_two_id"]
+            your_score = battle["player_one_score"]
+            opponent_score = battle["player_two_score"]
+            elo_delta = battle.get("player_one_elo_delta", 0) or 0
+        else:
+            opponent_id = battle["player_one_id"]
+            your_score = battle["player_two_score"]
+            opponent_score = battle["player_one_score"]
+            elo_delta = battle.get("player_two_elo_delta", 0) or 0
+
+        opponent_row = get_user_by_id(opponent_id) if opponent_id else None
+        opponent_name = opponent_row[1] if opponent_row else t("common.unknown")
+
+        if is_draw_value(battle["winner_name"]):
+            result_key = "draw"
+            current_streak = 0
+        elif battle["winner_id"] == user_id:
+            result_key = "win"
+            current_streak += 1
+            longest_winstreak = max(longest_winstreak, current_streak)
+        else:
+            result_key = "loss"
+            current_streak = 0
+
+        current_elo += elo_delta
+        elo_points.append(
+            {
+                "label": f"M{index}",
+                "elo": current_elo,
+            }
+        )
+
+        history_rows.append(
+            {
+                "id": battle["id"],
+                "opponent_name": opponent_name,
+                "result_key": result_key,
+                "result_label": t(f"result.{result_key}"),
+                "your_score": your_score,
+                "opponent_score": opponent_score,
+                "elo_delta": elo_delta,
+                "elo_delta_label": f"{elo_delta:+d}",
+                "created_at": format_datetime(battle["finished_at"] or battle["started_at"]),
+                "duration": format_match_duration(battle["started_at"], battle["finished_at"]),
+            }
+        )
+
+    battle_stats = build_profile_battle_stats(user_id, current_user)
+    return {
+        "elo_points": elo_points,
+        "winrate": battle_stats["win_percent"],
+        "longest_winstreak": longest_winstreak,
+        "matches": battle_stats["total_matches"],
+        "history_rows": list(reversed(history_rows)),
     }
 
 
@@ -1553,11 +1708,15 @@ def register_routes(app):
             return redirect(url_for("home"))
 
         battle_stats = build_profile_battle_stats(current_user["id"], current_user)
+        leaderboards = build_profile_leaderboards(current_user["id"])
+        dashboard = build_profile_dashboard(current_user["id"])
 
         return render_template(
             "profile.html",
             player=current_user,
             battle_stats=battle_stats,
+            leaderboards=leaderboards,
+            dashboard=dashboard,
             profile_error=None,
         )
 

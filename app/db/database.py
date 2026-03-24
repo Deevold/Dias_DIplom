@@ -91,6 +91,8 @@ def init_db(database_url=DATABASE_URL):
             player_two_answers TEXT NOT NULL DEFAULT '[]',
             player_one_times TEXT NOT NULL DEFAULT '[]',
             player_two_times TEXT NOT NULL DEFAULT '[]',
+            player_one_elo_delta INTEGER NOT NULL DEFAULT 0,
+            player_two_elo_delta INTEGER NOT NULL DEFAULT 0,
             player_two_next_action_at TIMESTAMP,
             tasks_json TEXT NOT NULL,
             winner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -105,6 +107,8 @@ def init_db(database_url=DATABASE_URL):
     cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS player_one_ready BOOLEAN NOT NULL DEFAULT FALSE")
     cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS player_two_ready BOOLEAN NOT NULL DEFAULT FALSE")
     cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS ready_started_at TIMESTAMP")
+    cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS player_one_elo_delta INTEGER NOT NULL DEFAULT 0")
+    cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS player_two_elo_delta INTEGER NOT NULL DEFAULT 0")
     cursor.execute("ALTER TABLE battles ADD COLUMN IF NOT EXISTS player_two_next_action_at TIMESTAMP")
 
     conn.commit()
@@ -231,6 +235,21 @@ def get_all_other_users(current_user_id):
         ORDER BY elo DESC, name ASC
         """,
         (current_user_id,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def get_all_users_for_leaderboard():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, name, email, language, card_theme, elo, total_points, battle_wins, battle_losses, battle_draws, created_at
+        FROM users
+        ORDER BY elo DESC, name ASC
+        """
     )
     rows = cursor.fetchall()
     conn.close()
@@ -719,7 +738,7 @@ def update_battle_tasks(battle_id, tasks_json):
     conn.close()
 
 
-def finish_battle(battle_id, winner_id, winner_name, status="finished"):
+def finish_battle(battle_id, winner_id, winner_name, status="finished", player_one_elo_delta=0, player_two_elo_delta=0):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -728,10 +747,12 @@ def finish_battle(battle_id, winner_id, winner_name, status="finished"):
         SET status = %s,
             winner_id = %s,
             winner_name = %s,
+            player_one_elo_delta = %s,
+            player_two_elo_delta = %s,
             finished_at = CURRENT_TIMESTAMP
         WHERE id = %s
         """,
-        (status, winner_id, winner_name, battle_id),
+        (status, winner_id, winner_name, player_one_elo_delta, player_two_elo_delta, battle_id),
     )
     conn.commit()
     conn.close()

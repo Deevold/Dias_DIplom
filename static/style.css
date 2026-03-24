@@ -369,6 +369,284 @@ select {
     min-height: 58px;
 }
 
+.profile-leaderboard-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.profile-leaderboard-panel h2,
+.profile-leaderboard-panel h3 {
+    margin: 0;
+}
+
+.leaderboard-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.leaderboard-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+        rgba(14, 20, 31, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-item.current-user {
+    border-color: rgba(255, 191, 73, 0.44);
+    box-shadow: 0 14px 30px rgba(255, 161, 0, 0.12);
+}
+
+.leaderboard-rank {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    background: rgba(255, 255, 255, 0.08);
+    color: #dce6ff;
+}
+
+.leaderboard-player {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.leaderboard-player strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leaderboard-player span {
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 13px;
+}
+
+.leaderboard-item b {
+    font-size: 18px;
+}
+
+.leaderboard-empty {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+}
+
+.profile-dashboard-panel {
+    margin-top: 24px;
+}
+
+.profile-tabs {
+    display: inline-flex;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-tab-button {
+    min-height: 48px;
+    padding: 0 22px;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(220, 230, 255, 0.88);
+    border: 1px solid transparent;
+    font-weight: 700;
+}
+
+.profile-tab-button.active {
+    background: linear-gradient(135deg, #2d74ff, #6aa4ff);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(68, 120, 255, 0.25);
+}
+
+.profile-tab-panel {
+    display: none;
+    margin-top: 22px;
+}
+
+.profile-tab-panel.active {
+    display: block;
+}
+
+.profile-dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+    gap: 18px;
+    align-items: stretch;
+}
+
+.profile-chart-card,
+.profile-metric-card,
+.profile-history-card {
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+        rgba(14, 20, 31, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 22px;
+}
+
+.profile-chart-card {
+    padding: 18px;
+}
+
+.profile-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.profile-chart-header h2 {
+    margin: 0;
+}
+
+.elo-chart-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 260px;
+}
+
+.elo-chart-wrap svg {
+    width: 100%;
+    height: 260px;
+    display: block;
+}
+
+.elo-chart-line {
+    fill: none;
+    stroke: url(#eloGradient);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.elo-chart-area {
+    fill: rgba(59, 130, 246, 0.12);
+}
+
+.elo-chart-point {
+    fill: #f8fbff;
+    stroke: #3b82f6;
+    stroke-width: 2;
+}
+
+.profile-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.profile-metric-card {
+    padding: 18px;
+}
+
+.profile-metric-card span {
+    display: block;
+    color: rgba(255, 255, 255, 0.68);
+    margin-bottom: 10px;
+}
+
+.profile-metric-card strong {
+    font-size: clamp(1.5rem, 4vw, 2.4rem);
+}
+
+.profile-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.profile-history-card {
+    padding: 18px;
+}
+
+.profile-history-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.profile-history-top > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.profile-history-top span {
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 14px;
+}
+
+.profile-history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.history-result-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.history-result-badge.win {
+    color: #8ff0c3;
+    background: rgba(31, 170, 115, 0.18);
+}
+
+.history-result-badge.loss {
+    color: #ff9bac;
+    background: rgba(214, 67, 93, 0.16);
+}
+
+.history-result-badge.draw {
+    color: #ffd98a;
+    background: rgba(255, 184, 0, 0.16);
+}
+
+.history-elo-delta {
+    font-weight: 700;
+}
+
+.history-elo-delta.positive {
+    color: #8ff0c3;
+}
+
+.history-elo-delta.negative {
+    color: #ff9bac;
+}
+
+.history-elo-delta.neutral {
+    color: #ffd98a;
+}
+
 .player-stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1518,6 +1796,27 @@ select {
     }
 
     .player-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-metrics-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-history-top,
+    .profile-history-meta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .profile-tabs {
+        width: 100%;
+        box-sizing: border-box;
+        display: grid;
         grid-template-columns: 1fr 1fr;
     }
 
