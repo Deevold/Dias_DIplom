@@ -1078,6 +1078,10 @@ select {
     padding: 22px;
 }
 
+.battle-leaderboard-panel {
+    margin-top: 22px;
+}
+
 .battle-bot-item {
     display: flex;
     align-items: center;

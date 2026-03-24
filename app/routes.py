@@ -947,6 +947,7 @@ def register_routes(app):
             "battle.html",
             bot_levels=app.config["BOT_LEVELS"],
             open_pvp_battle=open_pvp_battle,
+            leaderboards=build_profile_leaderboards(current_user["id"]),
         )
 
     @app.route("/sounds/<path:filename>")

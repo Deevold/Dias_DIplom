@@ -57,6 +57,66 @@
                     </div>
                 </article>
             </section>
+
+            <section class="landing-panel battle-leaderboard-panel">
+                <h2>{{ tr("profile.leaderboard") }}</h2>
+
+                <div class="leaderboard-block">
+                    <h3>{{ tr("profile.top_elo") }}</h3>
+                    <div class="leaderboard-list">
+                        {% for entry in leaderboards.elo %}
+                            <div class="leaderboard-item {% if entry.is_current_user %}current-user{% endif %}">
+                                <span class="leaderboard-rank">#{{ loop.index }}</span>
+                                <div class="leaderboard-player">
+                                    <strong>{{ entry.user.name }}</strong>
+                                    <span>{{ tr("profile.elo_short") }}</span>
+                                </div>
+                                <b>{{ entry.user.elo }}</b>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="leaderboard-block">
+                    <h3>{{ tr("profile.top_wins") }}</h3>
+                    <div class="leaderboard-list">
+                        {% if leaderboards.wins %}
+                            {% for entry in leaderboards.wins %}
+                                <div class="leaderboard-item {% if entry.is_current_user %}current-user{% endif %}">
+                                    <span class="leaderboard-rank">#{{ loop.index }}</span>
+                                    <div class="leaderboard-player">
+                                        <strong>{{ entry.user.name }}</strong>
+                                        <span>{{ tr("profile.wins") }}</span>
+                                    </div>
+                                    <b>{{ entry.stats.wins }}</b>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="leaderboard-empty">{{ tr("profile.no_leaderboard") }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="leaderboard-block">
+                    <h3>{{ tr("profile.top_accuracy") }}</h3>
+                    <div class="leaderboard-list">
+                        {% if leaderboards.accuracy %}
+                            {% for entry in leaderboards.accuracy %}
+                                <div class="leaderboard-item {% if entry.is_current_user %}current-user{% endif %}">
+                                    <span class="leaderboard-rank">#{{ loop.index }}</span>
+                                    <div class="leaderboard-player">
+                                        <strong>{{ entry.user.name }}</strong>
+                                        <span>{{ tr("profile.accuracy") }}</span>
+                                    </div>
+                                    <b>{{ entry.stats.accuracy_percent }}%</b>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="leaderboard-empty">{{ tr("profile.no_leaderboard") }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
         {% else %}
             <section class="landing-panel">
                 <a href="/" class="action-link">{{ tr("battle.create_profile") }}</a>
