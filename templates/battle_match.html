@@ -24,6 +24,7 @@
                 </div>
                 <div class="battle-meta">
                     <span id="battle-round-label">{{ tr("battle.question", current=current_index, total=total_tasks_label) }}</span>
+                    <span id="battle-live-pill" class="battle-live-pill">{{ tr("battle.live_sync") }}</span>
                 </div>
             </div>
 
@@ -44,10 +45,22 @@
                     {% if opponent_lives is not none %}<span id="opponent-lives">{{ tr("battle.lives", count=opponent_lives) }}</span>{% endif %}
                 </div>
             </div>
+
+            <div class="battle-live-strip">
+                <span id="battle-opponent-indicator" class="battle-opponent-indicator hidden"></span>
+            </div>
         </section>
 
         <section class="landing-panel battle-panel battle-question-panel">
             {% if current_task %}
+                <div id="battle-round-transition" class="battle-round-transition hidden" aria-hidden="true">
+                    <div class="battle-round-transition-card">
+                        <span class="eyebrow" id="battle-round-transition-label">{{ tr("battle.next_question") }}</span>
+                        <strong id="battle-round-transition-title">{{ tr("battle.next_question") }}</strong>
+                        <small id="battle-round-transition-subtitle"></small>
+                    </div>
+                </div>
+
                 <div class="battle-question-wrap">
                     <h1 class="battle-question">{{ current_task.q }}</h1>
                 </div>
@@ -102,10 +115,15 @@
         let currentTotalTasksLabel = {{ total_tasks_label|tojson }};
         const battlePointsText = {{ tr("battle.points")|tojson }};
         const battleLivesPattern = {{ tr("battle.lives", count="__COUNT__")|tojson }};
+        const opponentAnsweredPattern = {{ tr("battle.opponent_answered", name="__NAME__")|tojson }};
+        const transitionNextQuestion = {{ tr("battle.next_question")|tojson }};
+        const transitionCorrectText = {{ tr("battle.transition_correct")|tojson }};
+        const transitionWrongText = {{ tr("battle.transition_wrong")|tojson }};
 
         const timerElement = document.getElementById("battle-timer");
         const responseSecondsInput = document.getElementById("response_seconds");
         const battleForm = document.getElementById("battle-answer-form");
+        const battleQuestionPanel = document.querySelector(".battle-question-panel");
         const soundToggle = document.getElementById("sound-toggle");
         const soundToggleIcon = document.getElementById("sound-toggle-icon");
         const pointsPopup = document.getElementById("points-popup");
@@ -118,6 +136,11 @@
         const yourLivesElement = document.getElementById("your-lives");
         const opponentLivesElement = document.getElementById("opponent-lives");
         const roundLabelElement = document.getElementById("battle-round-label");
+        const battleLivePill = document.getElementById("battle-live-pill");
+        const opponentIndicatorElement = document.getElementById("battle-opponent-indicator");
+        const roundTransitionElement = document.getElementById("battle-round-transition");
+        const roundTransitionTitleElement = document.getElementById("battle-round-transition-title");
+        const roundTransitionSubtitleElement = document.getElementById("battle-round-transition-subtitle");
         const countdownAudio = document.getElementById("countdown-audio");
         const backgroundAudio = document.getElementById("background-audio");
         const soundOnIconUrl = "{{ sound_on_icon_url }}";
@@ -128,6 +151,11 @@
         let pollingLocked = false;
         let answerSubmitting = false;
         let currentRoundIndex = {{ current_index }};
+        let currentYourAnswerCount = {{ your_answer_count }};
+        let currentOpponentAnswerCount = {{ opponent_answer_count }};
+        let transitionLocked = false;
+        let opponentIndicatorTimeoutId = null;
+        let pollTimerId = null;
         const questionStartedAt = Date.now();
 
         let audioContext = null;
@@ -289,6 +317,75 @@
             }
         }
 
+        function setLiveSyncState(isActive) {
+            if (!battleLivePill) {
+                return;
+            }
+            battleLivePill.classList.toggle("is-syncing", Boolean(isActive));
+        }
+
+        function showOpponentAnswered(name) {
+            if (!opponentIndicatorElement) {
+                return;
+            }
+            clearTimeout(opponentIndicatorTimeoutId);
+            opponentIndicatorElement.textContent = opponentAnsweredPattern.replace("__NAME__", name || "");
+            opponentIndicatorElement.classList.remove("hidden");
+            opponentIndicatorElement.classList.add("show");
+            if (opponentScoreElement) {
+                opponentScoreElement.classList.remove("battle-score-pulse");
+                void opponentScoreElement.offsetWidth;
+                opponentScoreElement.classList.add("battle-score-pulse");
+            }
+            if (progressRightElement) {
+                progressRightElement.classList.remove("battle-track-pulse");
+                void progressRightElement.offsetWidth;
+                progressRightElement.classList.add("battle-track-pulse");
+            }
+            opponentIndicatorTimeoutId = setTimeout(function () {
+                opponentIndicatorElement.classList.remove("show");
+                opponentIndicatorElement.classList.add("hidden");
+            }, 1400);
+        }
+
+        function showRoundTransition(title, subtitle, autoHide = true) {
+            if (!roundTransitionElement) {
+                return;
+            }
+            if (roundTransitionTitleElement) {
+                roundTransitionTitleElement.textContent = title || transitionNextQuestion;
+            }
+            if (roundTransitionSubtitleElement) {
+                roundTransitionSubtitleElement.textContent = subtitle || "";
+            }
+            roundTransitionElement.classList.remove("hidden");
+            roundTransitionElement.classList.add("show");
+            if (battleQuestionPanel) {
+                battleQuestionPanel.classList.add("is-transitioning");
+            }
+            if (!autoHide) {
+                return;
+            }
+            setTimeout(function () {
+                roundTransitionElement.classList.remove("show");
+                roundTransitionElement.classList.add("hidden");
+                if (battleQuestionPanel) {
+                    battleQuestionPanel.classList.remove("is-transitioning");
+                }
+            }, 540);
+        }
+
+        function beginRoundReload(title, subtitle) {
+            if (transitionLocked) {
+                return;
+            }
+            transitionLocked = true;
+            showRoundTransition(title, subtitle, false);
+            setTimeout(function () {
+                window.location.href = "/battle/match/" + BATTLE_ID;
+            }, 360);
+        }
+
         function livesText(count) {
             return battleLivesPattern.replace("__COUNT__", count);
         }
@@ -300,6 +397,15 @@
         function updateLiveBattleState(data) {
             if (typeof data.remaining_seconds === "number") {
                 syncBattleDeadline(data.remaining_seconds, data.battle_deadline_ts);
+            }
+            if (typeof data.opponent_answer_count === "number" && data.opponent_answer_count > currentOpponentAnswerCount) {
+                showOpponentAnswered(data.opponent_name);
+            }
+            if (typeof data.your_answer_count === "number") {
+                currentYourAnswerCount = data.your_answer_count;
+            }
+            if (typeof data.opponent_answer_count === "number") {
+                currentOpponentAnswerCount = data.opponent_answer_count;
             }
             if (yourScoreElement && typeof data.your_score === "number") {
                 yourScoreElement.textContent = data.your_score;
@@ -336,13 +442,16 @@
         }
 
         async function pollBattleState() {
-            if (pollingLocked || answerSubmitting) {
+            if (pollingLocked || answerSubmitting || transitionLocked) {
+                scheduleNextPoll(300);
                 return;
             }
             pollingLocked = true;
+            setLiveSyncState(true);
             try {
                 const response = await fetch("/battle/match/" + BATTLE_ID + "/status", {
-                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    cache: "no-store"
                 });
                 const data = await response.json();
                 if (data.redirect_url) {
@@ -353,16 +462,24 @@
                     window.location.href = "/battle/match/" + BATTLE_ID;
                     return;
                 }
+                updateLiveBattleState(data);
                 if (typeof data.current_index === "number" && data.current_index !== currentRoundIndex) {
-                    window.location.href = "/battle/match/" + BATTLE_ID;
+                    currentRoundIndex = data.current_index;
+                    beginRoundReload(transitionNextQuestion, data.opponent_name || "");
                     return;
                 }
-                updateLiveBattleState(data);
             } catch (error) {
                 console.debug(error);
             } finally {
                 pollingLocked = false;
+                setLiveSyncState(false);
+                scheduleNextPoll(document.hidden ? 1200 : 650);
             }
+        }
+
+        function scheduleNextPoll(delay) {
+            clearTimeout(pollTimerId);
+            pollTimerId = setTimeout(pollBattleState, delay);
         }
 
         function enableSound() {
@@ -424,9 +541,29 @@
 
         updateTimer();
         setInterval(updateTimer, 1000);
-        setInterval(pollBattleState, 1500);
+        scheduleNextPoll(450);
+
+        document.addEventListener("visibilitychange", function () {
+            if (!document.hidden) {
+                pollBattleState();
+            }
+        });
+
+        window.addEventListener("focus", function () {
+            pollBattleState();
+        });
 
         if (battleForm) {
+            const answerButtons = Array.from(battleForm.querySelectorAll(".answer-option"));
+            answerButtons.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    answerButtons.forEach(function (item) {
+                        item.disabled = true;
+                        item.classList.remove("selected");
+                    });
+                    button.classList.add("selected");
+                });
+            });
             battleForm.addEventListener("submit", function () {
                 answerSubmitting = true;
                 if (backgroundAudio) {
@@ -436,6 +573,13 @@
                     responseSecondsInput.value = ((Date.now() - questionStartedAt) / 1000).toFixed(2);
                 }
             });
+        }
+
+        if (lastAnswerSubmitted) {
+            showRoundTransition(
+                lastAnswerCorrect ? transitionCorrectText : transitionWrongText,
+                lastAnswerCorrect && lastAnswerScore > 0 ? ("+" + lastAnswerScore) : transitionNextQuestion
+            );
         }
     </script>
 </body>

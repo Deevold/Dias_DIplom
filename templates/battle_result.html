@@ -22,7 +22,16 @@
                 {% endif %}
             </div>
 
-            <p><b>{{ tr("battle.score") }}:</b> {{ your_score }} : {{ opponent_score }}</p>
+            <div class="battle-result-grid">
+                <div class="battle-result-card">
+                    <span>{{ current_user.name }}</span>
+                    <strong>{{ your_score }}</strong>
+                </div>
+                <div class="battle-result-card right">
+                    <span>{{ opponent.name if opponent else tr("common.unknown") }}</span>
+                    <strong>{{ opponent_score }}</strong>
+                </div>
+            </div>
 
             <div class="battle-progress-shell battle-progress-top">
                 <div class="tug-bar battle-tug-bar dual-tug-bar">
@@ -30,6 +39,11 @@
                     <div class="duel-track duel-fill-right {{ opponent_track_class }}" style="width: {{ 100 - progress }}%;"></div>
                     <div class="tug-center" style="left: {{ progress }}%;"></div>
                 </div>
+            </div>
+
+            <div class="battle-result-summary">
+                <span>{{ tr("battle.score") }}</span>
+                <strong>{{ your_score }} : {{ opponent_score }}</strong>
             </div>
 
             {% if battle.battle_type == "pvp" %}

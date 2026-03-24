@@ -1003,6 +1003,12 @@ def register_routes(app):
             last_answer_submitted=request.args.get("answered") == "1",
             last_answer_correct=request.args.get("correct") == "1",
             last_answer_score=int(request.args.get("last_score", "0") or "0"),
+            your_answer_count=len(current_answers),
+            opponent_answer_count=(
+                len(player_two_answers)
+                if battle["battle_type"] == "bot" or side == "player_one"
+                else len(player_one_answers)
+            ),
         )
 
     @app.route("/battle/match/<int:battle_id>/status")
@@ -1084,6 +1090,12 @@ def register_routes(app):
                 "battle_deadline_ts": get_battle_deadline_timestamp(battle["started_at"], battle["time_limit"]),
                 "current_index": current_index + 1,
                 "total_tasks_label": "∞" if battle["battle_type"] == "pvp" else str(len(tasks)),
+                "your_answer_count": len(current_answers),
+                "opponent_answer_count": (
+                    len(loads_data(battle["player_two_answers"], []))
+                    if battle["battle_type"] == "bot" or battle_view["side"] == "player_one"
+                    else len(loads_data(battle["player_one_answers"], []))
+                ),
             }
         )
 
