@@ -1158,7 +1158,10 @@ def register_routes(app):
             is_draw = is_draw_value(battle["winner_name"])
             result_outcome = "draw"
             if not is_draw:
-                result_outcome = "win" if battle["winner_id"] == current_user["id"] else "loss"
+                if battle["battle_type"] == "bot":
+                    result_outcome = "win" if battle["winner_name"] == current_user["name"] else "loss"
+                else:
+                    result_outcome = "win" if battle["winner_id"] == current_user["id"] else "loss"
             return render_template(
                 "battle_result.html",
                 battle=battle,

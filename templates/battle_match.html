@@ -24,7 +24,6 @@
                 </div>
                 <div class="battle-meta">
                     <span id="battle-round-label">{{ tr("battle.question", current=current_index, total=total_tasks_label) }}</span>
-                    <span id="battle-live-pill" class="battle-live-pill">{{ tr("battle.live_sync") }}</span>
                 </div>
             </div>
 
@@ -50,12 +49,6 @@
                 <span id="battle-opponent-indicator" class="battle-opponent-indicator hidden"></span>
             </div>
 
-            {% if battle.battle_type == "bot" %}
-                <div class="battle-ai-status" id="battle-ai-status">
-                    <span class="battle-ai-status-badge" id="battle-ai-status-badge">{{ tr("battle.ai_thinking") }}</span>
-                    <span class="battle-ai-status-text" id="battle-ai-status-text">{{ tr("battle.ai_thinking") }}</span>
-                </div>
-            {% endif %}
         </section>
 
         <section class="landing-panel battle-panel battle-question-panel">
@@ -126,9 +119,6 @@
         const transitionNextQuestion = {{ tr("battle.next_question")|tojson }};
         const transitionCorrectText = {{ tr("battle.transition_correct")|tojson }};
         const transitionWrongText = {{ tr("battle.transition_wrong")|tojson }};
-        const aiThinkingText = {{ tr("battle.ai_thinking")|tojson }};
-        const aiAnsweredText = {{ tr("battle.ai_answered")|tojson }};
-
         const timerElement = document.getElementById("battle-timer");
         const responseSecondsInput = document.getElementById("response_seconds");
         const battleForm = document.getElementById("battle-answer-form");
@@ -145,11 +135,7 @@
         const yourLivesElement = document.getElementById("your-lives");
         const opponentLivesElement = document.getElementById("opponent-lives");
         const roundLabelElement = document.getElementById("battle-round-label");
-        const battleLivePill = document.getElementById("battle-live-pill");
         const opponentIndicatorElement = document.getElementById("battle-opponent-indicator");
-        const aiStatusElement = document.getElementById("battle-ai-status");
-        const aiStatusBadgeElement = document.getElementById("battle-ai-status-badge");
-        const aiStatusTextElement = document.getElementById("battle-ai-status-text");
         const roundTransitionElement = document.getElementById("battle-round-transition");
         const roundTransitionTitleElement = document.getElementById("battle-round-transition-title");
         const roundTransitionSubtitleElement = document.getElementById("battle-round-transition-subtitle");
@@ -165,7 +151,6 @@
         let currentRoundIndex = {{ current_index }};
         let currentYourAnswerCount = {{ your_answer_count }};
         let currentOpponentAnswerCount = {{ opponent_answer_count }};
-        let currentAiThinking = {{ "true" if ai_state and ai_state.thinking else "false" }};
         let transitionLocked = false;
         let opponentIndicatorTimeoutId = null;
         let pollTimerId = null;
@@ -330,13 +315,6 @@
             }
         }
 
-        function setLiveSyncState(isActive) {
-            if (!battleLivePill) {
-                return;
-            }
-            battleLivePill.classList.toggle("is-syncing", Boolean(isActive));
-        }
-
         function showOpponentAnswered(name) {
             if (!opponentIndicatorElement) {
                 return;
@@ -359,20 +337,6 @@
                 opponentIndicatorElement.classList.remove("show");
                 opponentIndicatorElement.classList.add("hidden");
             }, 1400);
-        }
-
-        function updateAiStatus(thinking) {
-            if (!aiStatusElement || BATTLE_TYPE !== "bot") {
-                return;
-            }
-            currentAiThinking = Boolean(thinking);
-            aiStatusElement.classList.toggle("answered", !currentAiThinking);
-            if (aiStatusBadgeElement) {
-                aiStatusBadgeElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
-            }
-            if (aiStatusTextElement) {
-                aiStatusTextElement.textContent = currentAiThinking ? aiThinkingText : aiAnsweredText;
-            }
         }
 
         function showRoundTransition(title, subtitle, autoHide = true) {
@@ -428,9 +392,6 @@
             if (typeof data.opponent_answer_count === "number" && data.opponent_answer_count > currentOpponentAnswerCount) {
                 showOpponentAnswered(data.opponent_name);
             }
-            if (BATTLE_TYPE === "bot" && typeof data.ai_thinking === "boolean") {
-                updateAiStatus(data.ai_thinking);
-            }
             if (typeof data.your_answer_count === "number") {
                 currentYourAnswerCount = data.your_answer_count;
             }
@@ -477,7 +438,6 @@
                 return;
             }
             pollingLocked = true;
-            setLiveSyncState(true);
             try {
                 const response = await fetch("/battle/match/" + BATTLE_ID + "/status", {
                     headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -502,7 +462,6 @@
                 console.debug(error);
             } finally {
                 pollingLocked = false;
-                setLiveSyncState(false);
                 scheduleNextPoll(document.hidden ? 1200 : 650);
             }
         }
@@ -588,7 +547,6 @@
             answerButtons.forEach(function (button) {
                 button.addEventListener("click", function () {
                     answerButtons.forEach(function (item) {
-                        item.disabled = true;
                         item.classList.remove("selected");
                     });
                     button.classList.add("selected");
@@ -596,6 +554,9 @@
             });
             battleForm.addEventListener("submit", function () {
                 answerSubmitting = true;
+                answerButtons.forEach(function (item) {
+                    item.disabled = true;
+                });
                 if (backgroundAudio) {
                     sessionStorage.setItem(backgroundAudioStorageKey, String(backgroundAudio.currentTime));
                 }
@@ -610,10 +571,6 @@
                 lastAnswerCorrect ? transitionCorrectText : transitionWrongText,
                 lastAnswerCorrect && lastAnswerScore > 0 ? ("+" + lastAnswerScore) : transitionNextQuestion
             );
-        }
-
-        if (BATTLE_TYPE === "bot") {
-            updateAiStatus(currentAiThinking, {{ ai_state.remaining_seconds if ai_state and ai_state.remaining_seconds is not none else 'null' }});
         }
     </script>
 </body>
