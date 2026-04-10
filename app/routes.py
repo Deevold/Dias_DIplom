@@ -254,24 +254,9 @@ def parse_battle_timestamp(value):
     return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
 
 
-def get_next_ai_action_at(level_config, task=None, level_code=None):
-    delay_seconds = pick_ai_delay(level_config, task, level_code)
+def get_next_ai_action_at(level_config):
+    delay_seconds = pick_ai_delay(level_config)
     return datetime.now() + timedelta(seconds=delay_seconds)
-
-
-def get_ai_state(battle):
-    next_action_at = parse_battle_timestamp(battle.get("player_two_next_action_at"))
-    if not next_action_at:
-        return {
-            "thinking": False,
-            "remaining_seconds": None,
-        }
-
-    remaining = max(0.0, (next_action_at - datetime.now()).total_seconds())
-    return {
-        "thinking": remaining > 0,
-        "remaining_seconds": round(remaining, 1),
-    }
 
 
 def get_battle_language(battle):
@@ -320,8 +305,7 @@ def advance_bot_battle_if_needed(app, battle, language):
 
     next_action_at = parse_battle_timestamp(battle.get("player_two_next_action_at"))
     if next_action_at is None:
-        current_task = tasks[len(player_two_answers)] if len(player_two_answers) < len(tasks) else None
-        next_action_at = get_next_ai_action_at(bot_level, current_task, battle["bot_level"])
+        next_action_at = get_next_ai_action_at(bot_level)
         update_battle_state(
             battle["id"],
             battle["player_one_score"],
@@ -341,7 +325,7 @@ def advance_bot_battle_if_needed(app, battle, language):
 
     while next_action_at and now >= next_action_at and len(player_two_answers) < len(tasks) and battle["status"] == "active":
         current_task = tasks[len(player_two_answers)]
-        response_seconds = pick_ai_delay(bot_level, current_task, battle["bot_level"])
+        response_seconds = pick_ai_delay(bot_level)
         bot_result = get_gemini_answer_data(
             current_task,
             battle["bot_level"],
@@ -362,8 +346,7 @@ def advance_bot_battle_if_needed(app, battle, language):
         if len(player_two_answers) >= len(tasks):
             next_action_at = None
         else:
-            upcoming_task = tasks[len(player_two_answers)] if len(player_two_answers) < len(tasks) else None
-            next_action_at = now + timedelta(seconds=pick_ai_delay(bot_level, upcoming_task, battle["bot_level"]))
+            next_action_at = now + timedelta(seconds=pick_ai_delay(bot_level))
 
     if not progressed:
         return battle
@@ -972,11 +955,7 @@ def register_routes(app):
             return redirect(url_for("battle"))
 
         tasks = generate_battle_tasks(app.config["BOT_BATTLE_TASKS_COUNT"], get_current_language(current_user))
-        first_ai_action_at = get_next_ai_action_at(
-            bot_level,
-            tasks[0] if tasks else None,
-            bot_level_code,
-        )
+        first_ai_action_at = get_next_ai_action_at(bot_level)
         battle_id = create_battle(
             battle_type="bot",
             ranked=False,
@@ -1137,8 +1116,10 @@ def register_routes(app):
         if battle["battle_type"] == "bot" and battle["player_one_id"] != current_user["id"]:
             return redirect(url_for("battle"))
 
+        skip_ai_advance = request.args.get("answered") == "1"
         if battle["battle_type"] == "bot":
-            battle = advance_bot_battle_if_needed(app, battle, get_current_language(current_user))
+            if not skip_ai_advance:
+                battle = advance_bot_battle_if_needed(app, battle, get_current_language(current_user))
         else:
             battle = ensure_pvp_task_buffer(battle)
         battle = maybe_finish_battle(app, battle)
@@ -1225,7 +1206,6 @@ def register_routes(app):
                 if battle["battle_type"] == "bot" or side == "player_one"
                 else len(player_one_answers)
             ),
-            ai_state=get_ai_state(battle) if battle["battle_type"] == "bot" else None,
         )
 
     @app.route("/battle/match/<int:battle_id>/status")
@@ -1313,8 +1293,6 @@ def register_routes(app):
                     if battle["battle_type"] == "bot" or battle_view["side"] == "player_one"
                     else len(loads_data(battle["player_one_answers"], []))
                 ),
-                "ai_thinking": get_ai_state(battle)["thinking"] if battle["battle_type"] == "bot" else False,
-                "ai_next_action_seconds": get_ai_state(battle)["remaining_seconds"] if battle["battle_type"] == "bot" else None,
             }
         )
 
@@ -1328,12 +1306,7 @@ def register_routes(app):
         if not battle or battle["status"] != "active":
             return redirect(url_for("battle_match", battle_id=battle_id))
 
-        if battle["battle_type"] == "bot":
-            battle = advance_bot_battle_if_needed(app, battle, get_current_language(current_user))
-            battle = maybe_finish_battle(app, battle)
-            if battle["status"] != "active":
-                return redirect(url_for("battle_match", battle_id=battle_id))
-        else:
+        if battle["battle_type"] != "bot":
             battle = ensure_pvp_task_buffer(battle)
 
         tasks = loads_data(battle["tasks_json"], [])

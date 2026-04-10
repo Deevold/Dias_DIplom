@@ -44,32 +44,20 @@
                     {% if opponent_lives is not none %}<span id="opponent-lives">{{ tr("battle.lives", count=opponent_lives) }}</span>{% endif %}
                 </div>
             </div>
-
-            <div class="battle-live-strip">
-                <span id="battle-opponent-indicator" class="battle-opponent-indicator hidden"></span>
-            </div>
-
         </section>
 
         <section class="landing-panel battle-panel battle-question-panel">
             {% if current_task %}
-                <div id="battle-round-transition" class="battle-round-transition hidden" aria-hidden="true">
-                    <div class="battle-round-transition-card">
-                        <span class="eyebrow" id="battle-round-transition-label">{{ tr("battle.next_question") }}</span>
-                        <strong id="battle-round-transition-title">{{ tr("battle.next_question") }}</strong>
-                        <small id="battle-round-transition-subtitle"></small>
-                    </div>
-                </div>
-
                 <div class="battle-question-wrap">
                     <h1 class="battle-question">{{ current_task.q }}</h1>
                 </div>
 
                 <form method="POST" action="/battle/match/{{ battle.id }}/answer" id="battle-answer-form" class="battle-answer-form">
                     <input type="hidden" name="response_seconds" id="response_seconds" value="0">
+                    <input type="hidden" name="user_answer" id="battle-user-answer" value="">
                     <div class="answer-grid">
                         {% for option in current_task.options %}
-                            <button type="submit" name="user_answer" value="{{ option }}" class="answer-option">
+                            <button type="button" data-answer-value="{{ option }}" class="answer-option">
                                 <span class="answer-option-index">{{ loop.index }}</span>
                                 <span class="answer-option-value">{{ option }}</span>
                             </button>
@@ -77,7 +65,7 @@
                     </div>
                 </form>
 
-                <div id="points-popup" class="points-popup {% if last_answer_submitted and last_answer_correct and last_answer_score > 0 %}show{% endif %}">
+                <div id="points-popup" class="points-popup {% if last_answer_submitted %}show{% endif %}">
                     {{ tr("battle.points_popup", score=last_answer_score) }}
                 </div>
 
@@ -115,12 +103,9 @@
         let currentTotalTasksLabel = {{ total_tasks_label|tojson }};
         const battlePointsText = {{ tr("battle.points")|tojson }};
         const battleLivesPattern = {{ tr("battle.lives", count="__COUNT__")|tojson }};
-        const opponentAnsweredPattern = {{ tr("battle.opponent_answered", name="__NAME__")|tojson }};
-        const transitionNextQuestion = {{ tr("battle.next_question")|tojson }};
-        const transitionCorrectText = {{ tr("battle.transition_correct")|tojson }};
-        const transitionWrongText = {{ tr("battle.transition_wrong")|tojson }};
         const timerElement = document.getElementById("battle-timer");
         const responseSecondsInput = document.getElementById("response_seconds");
+        const userAnswerInput = document.getElementById("battle-user-answer");
         const battleForm = document.getElementById("battle-answer-form");
         const battleQuestionPanel = document.querySelector(".battle-question-panel");
         const soundToggle = document.getElementById("sound-toggle");
@@ -135,10 +120,6 @@
         const yourLivesElement = document.getElementById("your-lives");
         const opponentLivesElement = document.getElementById("opponent-lives");
         const roundLabelElement = document.getElementById("battle-round-label");
-        const opponentIndicatorElement = document.getElementById("battle-opponent-indicator");
-        const roundTransitionElement = document.getElementById("battle-round-transition");
-        const roundTransitionTitleElement = document.getElementById("battle-round-transition-title");
-        const roundTransitionSubtitleElement = document.getElementById("battle-round-transition-subtitle");
         const countdownAudio = document.getElementById("countdown-audio");
         const backgroundAudio = document.getElementById("background-audio");
         const soundOnIconUrl = "{{ sound_on_icon_url }}";
@@ -151,8 +132,6 @@
         let currentRoundIndex = {{ current_index }};
         let currentYourAnswerCount = {{ your_answer_count }};
         let currentOpponentAnswerCount = {{ opponent_answer_count }};
-        let transitionLocked = false;
-        let opponentIndicatorTimeoutId = null;
         let pollTimerId = null;
         const questionStartedAt = Date.now();
 
@@ -306,75 +285,17 @@
             }
             if (lastAnswerCorrect) {
                 playCorrectSound();
-                if (pointsPopup && lastAnswerScore > 0) {
+                if (pointsPopup) {
                     pointsPopup.classList.add("show");
                     setTimeout(() => pointsPopup.classList.remove("show"), 1600);
                 }
             } else {
                 playWrongSound();
-            }
-        }
-
-        function showOpponentAnswered(name) {
-            if (!opponentIndicatorElement) {
-                return;
-            }
-            clearTimeout(opponentIndicatorTimeoutId);
-            opponentIndicatorElement.textContent = opponentAnsweredPattern.replace("__NAME__", name || "");
-            opponentIndicatorElement.classList.remove("hidden");
-            opponentIndicatorElement.classList.add("show");
-            if (opponentScoreElement) {
-                opponentScoreElement.classList.remove("battle-score-pulse");
-                void opponentScoreElement.offsetWidth;
-                opponentScoreElement.classList.add("battle-score-pulse");
-            }
-            if (progressRightElement) {
-                progressRightElement.classList.remove("battle-track-pulse");
-                void progressRightElement.offsetWidth;
-                progressRightElement.classList.add("battle-track-pulse");
-            }
-            opponentIndicatorTimeoutId = setTimeout(function () {
-                opponentIndicatorElement.classList.remove("show");
-                opponentIndicatorElement.classList.add("hidden");
-            }, 1400);
-        }
-
-        function showRoundTransition(title, subtitle, autoHide = true) {
-            if (!roundTransitionElement) {
-                return;
-            }
-            if (roundTransitionTitleElement) {
-                roundTransitionTitleElement.textContent = title || transitionNextQuestion;
-            }
-            if (roundTransitionSubtitleElement) {
-                roundTransitionSubtitleElement.textContent = subtitle || "";
-            }
-            roundTransitionElement.classList.remove("hidden");
-            roundTransitionElement.classList.add("show");
-            if (battleQuestionPanel) {
-                battleQuestionPanel.classList.add("is-transitioning");
-            }
-            if (!autoHide) {
-                return;
-            }
-            setTimeout(function () {
-                roundTransitionElement.classList.remove("show");
-                roundTransitionElement.classList.add("hidden");
-                if (battleQuestionPanel) {
-                    battleQuestionPanel.classList.remove("is-transitioning");
+                if (pointsPopup) {
+                    pointsPopup.classList.add("show");
+                    setTimeout(() => pointsPopup.classList.remove("show"), 1600);
                 }
-            }, 540);
-        }
-
-        function beginRoundReload(title, subtitle) {
-            if (transitionLocked) {
-                return;
             }
-            transitionLocked = true;
-            showRoundTransition(title, subtitle, false);
-            setTimeout(function () {
-                window.location.href = "/battle/match/" + BATTLE_ID;
-            }, 360);
         }
 
         function livesText(count) {
@@ -388,9 +309,6 @@
         function updateLiveBattleState(data) {
             if (typeof data.remaining_seconds === "number") {
                 syncBattleDeadline(data.remaining_seconds, data.battle_deadline_ts);
-            }
-            if (typeof data.opponent_answer_count === "number" && data.opponent_answer_count > currentOpponentAnswerCount) {
-                showOpponentAnswered(data.opponent_name);
             }
             if (typeof data.your_answer_count === "number") {
                 currentYourAnswerCount = data.your_answer_count;
@@ -433,7 +351,7 @@
         }
 
         async function pollBattleState() {
-            if (pollingLocked || answerSubmitting || transitionLocked) {
+            if (pollingLocked || answerSubmitting) {
                 scheduleNextPoll(300);
                 return;
             }
@@ -455,7 +373,7 @@
                 updateLiveBattleState(data);
                 if (typeof data.current_index === "number" && data.current_index !== currentRoundIndex) {
                     currentRoundIndex = data.current_index;
-                    beginRoundReload(transitionNextQuestion, data.opponent_name || "");
+                    window.location.href = "/battle/match/" + BATTLE_ID;
                     return;
                 }
             } catch (error) {
@@ -550,6 +468,10 @@
                         item.classList.remove("selected");
                     });
                     button.classList.add("selected");
+                    if (userAnswerInput) {
+                        userAnswerInput.value = button.dataset.answerValue || "";
+                    }
+                    battleForm.requestSubmit();
                 });
             });
             battleForm.addEventListener("submit", function () {
@@ -566,12 +488,6 @@
             });
         }
 
-        if (lastAnswerSubmitted) {
-            showRoundTransition(
-                lastAnswerCorrect ? transitionCorrectText : transitionWrongText,
-                lastAnswerCorrect && lastAnswerScore > 0 ? ("+" + lastAnswerScore) : transitionNextQuestion
-            );
-        }
     </script>
 </body>
 </html>
