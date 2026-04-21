@@ -14,7 +14,6 @@
         data-open-battle-status="{{ open_pvp_battle.status if open_pvp_battle else 'idle' }}"
     >
         <section class="section-hero battle-hero-centered">
-            <span class="eyebrow">{{ tr("nav.battle") }}</span>
             <h1>{{ tr("battle.hero") }}</h1>
             {% if not current_user %}
                 <p class="hero-text">{{ tr("battle.need_profile") }}</p>
@@ -179,7 +178,9 @@
             let currentBattleId = battlePageRoot.dataset.openBattleId ? Number(battlePageRoot.dataset.openBattleId) : null;
             let currentStatus = battlePageRoot.dataset.openBattleStatus || "idle";
             let pollingLocked = false;
+            let searchRequestInFlight = false;
             let readySoundInterval = null;
+            let readySoundBattleId = null;
             let audioContext = null;
 
             function ensureAudioContext() {
@@ -205,8 +206,12 @@
                 oscillator.stop(now + 0.35);
             }
 
-            function startReadySound() {
+            function startReadySound(battleId) {
+                if (readySoundInterval && readySoundBattleId === battleId) {
+                    return;
+                }
                 stopReadySound();
+                readySoundBattleId = battleId;
                 playReadyPulse();
                 readySoundInterval = setInterval(playReadyPulse, 1000);
             }
@@ -216,6 +221,7 @@
                     clearInterval(readySoundInterval);
                     readySoundInterval = null;
                 }
+                readySoundBattleId = null;
             }
 
             function setSearchButtonState(isSearching) {
@@ -243,7 +249,7 @@
                 setReadyBadge(modalYourReady, !!data.your_ready);
                 setReadyBadge(modalOpponentReady, !!data.opponent_ready);
                 modalTimer.textContent = String(data.ready_remaining_seconds || 15);
-                startReadySound();
+                startReadySound(currentBattleId);
                 setSearchButtonState(true);
                 modalAcceptButton.disabled = !!data.your_ready;
                 modalAcceptButton.textContent = data.your_ready ? uiText.alreadyAccepted : uiText.play;
@@ -255,14 +261,23 @@
             }
 
             async function startSearch() {
+                if (searchRequestInFlight) {
+                    return;
+                }
+
+                searchRequestInFlight = true;
                 setSearchButtonState(true);
-                const response = await fetch("/battle/search-pvp", {
-                    method: "POST",
-                    headers: { "X-Requested-With": "XMLHttpRequest" }
-                });
-                const data = await response.json();
-                currentBattleId = data.battle_id || null;
-                currentStatus = data.status || "waiting";
+                try {
+                    const response = await fetch("/battle/search-pvp", {
+                        method: "POST",
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    });
+                    const data = await response.json();
+                    currentBattleId = data.battle_id || null;
+                    currentStatus = data.status || "waiting";
+                } finally {
+                    searchRequestInFlight = false;
+                }
             }
 
             async function cancelSearch() {
@@ -320,6 +335,10 @@
                         return;
                     }
 
+                    if ((data.status === "idle" || data.status === "expired") && searchRequestInFlight) {
+                        return;
+                    }
+
                     if (data.status === "idle" || data.status === "expired") {
                         currentBattleId = null;
                         currentStatus = "idle";
@@ -353,6 +372,10 @@
 
             if (searchButton) {
                 searchButton.addEventListener("click", function () {
+                    if (searchRequestInFlight) {
+                        return;
+                    }
+
                     if (currentStatus === "waiting" || currentStatus === "ready_check") {
                         cancelSearch();
                     } else {

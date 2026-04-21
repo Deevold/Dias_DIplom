@@ -9,7 +9,6 @@
 <body>
     <main class="page">
         <section class="landing-panel battle-panel">
-            <span class="eyebrow">{{ tr("battle.result_title") }}</span>
             <h1>{{ tr("battle.finished") }}</h1>
 
             <div class="result-state-banner {{ result_outcome }}">
@@ -49,8 +48,6 @@
             {% if battle.battle_type == "pvp" %}
                 {% if is_draw %}
                     <p>{{ tr("battle.draw_pvp") }}</p>
-                {% else %}
-                    <p>{{ tr("battle.rank_updated") }}</p>
                 {% endif %}
                 <div class="feature-list">
                     <div class="feature-item">
