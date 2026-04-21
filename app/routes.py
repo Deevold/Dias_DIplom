@@ -460,6 +460,8 @@ def maybe_finish_battle(app, battle):
             should_finish = True
         if len(player_one_answers) >= len(tasks) or len(player_two_answers) >= len(tasks):
             should_finish = True
+        if is_pushout(battle["player_one_score"], battle["player_two_score"]):
+            should_finish = True
     else:
         if is_pushout(battle["player_one_score"], battle["player_two_score"]):
             should_finish = True

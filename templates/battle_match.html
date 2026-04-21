@@ -137,6 +137,7 @@
 
         let audioContext = null;
         let soundEnabled = localStorage.getItem("battle_sound_enabled") === "1";
+        let audioUnlocked = false;
 
         function ensureAudioContext() {
             if (!audioContext) {
@@ -178,6 +179,21 @@
             }
             soundToggle.classList.toggle("active", soundEnabled);
             soundToggleIcon.src = soundEnabled ? soundOnIconUrl : soundOffIconUrl;
+        }
+
+        function unlockAudio() {
+            if (audioUnlocked) {
+                return;
+            }
+            try {
+                const context = ensureAudioContext();
+                if (context.state === "suspended") {
+                    context.resume().catch(() => {});
+                }
+            } catch (error) {
+                console.debug(error);
+            }
+            audioUnlocked = true;
         }
 
         function playToneSequence(frequencies, duration) {
@@ -352,7 +368,7 @@
 
         async function pollBattleState() {
             if (pollingLocked || answerSubmitting) {
-                scheduleNextPoll(300);
+                scheduleNextPoll(1200);
                 return;
             }
             pollingLocked = true;
@@ -380,7 +396,7 @@
                 console.debug(error);
             } finally {
                 pollingLocked = false;
-                scheduleNextPoll(document.hidden ? 1200 : 650);
+                scheduleNextPoll(document.hidden ? 3000 : 1500);
             }
         }
 
@@ -390,6 +406,7 @@
         }
 
         function enableSound() {
+            unlockAudio();
             soundEnabled = true;
             localStorage.setItem("battle_sound_enabled", "1");
             updateSoundButton();
@@ -410,8 +427,9 @@
         }
 
         document.addEventListener("click", function handleFirstInteraction() {
-            if (!soundEnabled) {
-                enableSound();
+            unlockAudio();
+            if (soundEnabled) {
+                startSoundtrack();
             }
             document.removeEventListener("click", handleFirstInteraction);
         }, { once: true });
@@ -431,6 +449,7 @@
 
         if (soundToggle) {
             soundToggle.addEventListener("click", function () {
+                unlockAudio();
                 soundEnabled = !soundEnabled;
                 localStorage.setItem("battle_sound_enabled", soundEnabled ? "1" : "0");
                 updateSoundButton();
@@ -448,7 +467,7 @@
 
         updateTimer();
         setInterval(updateTimer, 1000);
-        scheduleNextPoll(450);
+        scheduleNextPoll(1500);
 
         document.addEventListener("visibilitychange", function () {
             if (!document.hidden) {

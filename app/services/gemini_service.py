@@ -81,7 +81,7 @@ def pick_ai_delay(level_config):
     return random.randint(level_config["min_time"], level_config["max_time"])
 
 
-def request_gemini_answer(task, api_key, model_name, language="ru", timeout=8):
+def request_gemini_answer(task, api_key, model_name, language="ru", timeout=5):
     if not api_key:
         return None
 
