@@ -165,6 +165,16 @@ def get_player_side(battle, current_user_id):
     return None
 
 
+def is_battle_draw(battle):
+    if is_draw_value(battle.get("winner_name")):
+        return True
+    return (
+        not battle.get("winner_id")
+        and not battle.get("winner_name")
+        and battle.get("player_one_score") == battle.get("player_two_score")
+    )
+
+
 def get_battle_view_state(battle, current_user):
     side = get_player_side(battle, current_user["id"])
     opponent = get_battle_opponent(battle, current_user)
@@ -511,7 +521,7 @@ def build_profile_battle_stats(user_id, current_user):
     answered_correct = 0
 
     for battle in finished_battles:
-        if is_draw_value(battle["winner_name"]):
+        if is_battle_draw(battle):
             draws += 1
         elif battle["winner_id"] == user_id:
             wins += 1
@@ -566,7 +576,7 @@ def build_overall_stats(user_id):
     battle_total_answers = 0
 
     for battle in pvp_battles:
-        if is_draw_value(battle["winner_name"]):
+        if is_battle_draw(battle):
             battle_draws += 1
         elif battle["winner_id"] == user_id:
             battle_wins += 1
@@ -706,7 +716,7 @@ def build_profile_dashboard(user_id):
         opponent_row = get_user_by_id(opponent_id) if opponent_id else None
         opponent_name = opponent_row[1] if opponent_row else t("common.unknown")
 
-        if is_draw_value(battle["winner_name"]):
+        if is_battle_draw(battle):
             result_key = "draw"
             current_streak = 0
         elif battle["winner_id"] == user_id:
@@ -745,7 +755,7 @@ def build_profile_dashboard(user_id):
         if level_code not in ai_stats:
             continue
         ai_stats[level_code]["matches"] += 1
-        if is_draw_value(battle["winner_name"]):
+        if is_battle_draw(battle):
             ai_stats[level_code]["draws"] += 1
         elif battle["winner_id"] == user_id:
             ai_stats[level_code]["wins"] += 1
@@ -907,7 +917,7 @@ def register_routes(app):
 
         recent_battles = []
         for battle_row in get_recent_battles_for_user(current_user["id"], 5):
-            if is_draw_value(battle_row["winner_name"]):
+            if is_battle_draw(battle_row):
                 winner_name = t("result.draw")
             elif (
                 battle_row["battle_type"] == "bot"
@@ -1138,7 +1148,7 @@ def register_routes(app):
             refreshed_opponent = opponent
             if battle["battle_type"] == "pvp" and opponent and opponent["id"]:
                 refreshed_opponent = format_user_card(get_user_by_id(opponent["id"]))
-            is_draw = is_draw_value(battle["winner_name"])
+            is_draw = is_battle_draw(battle)
             result_outcome = "draw"
             if not is_draw:
                 if battle["battle_type"] == "bot":
@@ -1174,7 +1184,6 @@ def register_routes(app):
 
         remaining_seconds = get_battle_remaining_seconds(battle["started_at"], battle["time_limit"])
         battle_view = get_battle_view_state(battle, current_user)
-
         return render_template(
             "battle_match.html",
             battle=battle,
@@ -1584,7 +1593,7 @@ def register_routes(app):
             opponent_row = get_user_by_id(opponent_id) if opponent_id else None
             opponent_name = opponent_row[1] if opponent_row else t("common.unknown")
 
-            if is_draw_value(battle["winner_name"]):
+            if is_battle_draw(battle):
                 result_label = t("result.draw")
             elif battle["winner_id"] == current_user["id"]:
                 result_label = t("result.win")
